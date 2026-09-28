@@ -1,0 +1,8 @@
+node_modules/
+dist/
+coverage/
+.turbo/
+*.log
+.DS_Store
+apps/desktop/src-tauri/target/
+.claude/settings.local.json
