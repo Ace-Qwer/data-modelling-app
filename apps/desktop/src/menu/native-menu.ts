@@ -101,16 +101,22 @@ export function useNativeMenu(
     const effect = { cancelled: false };
     void (async () => {
       try {
+        // StrictMode starts this effect twice; only the build that is still wanted may become the
+        // app menu and hand its items to the sync effect.
+        const built: Handles = new Map();
         const items = await build(
           toNativeSpec(menus, env),
           (id) => {
             handleAction(id);
           },
-          handles,
+          built,
         );
         const menu = await Menu.new({ items });
+        if (effect.cancelled) return;
         await menu.setAsAppMenu();
-        if (!effect.cancelled) setState('active');
+        handles.clear();
+        for (const [id, item] of built) handles.set(id, item);
+        setState('active');
       } catch (error) {
         console.error('Native menu unavailable, using the in-window menu instead', error);
         if (!effect.cancelled) setState('failed');
