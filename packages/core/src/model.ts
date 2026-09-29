@@ -3,10 +3,17 @@ import { ulid } from 'ulid';
 import type { Command, Element } from './types';
 import { assertName, assertPropertyValue, defaultsOf } from './validation';
 
+interface HistoryEntry {
+  readonly command: Command;
+  readonly inverse: Command;
+}
+
 export class Model {
   readonly #registry: Registry;
   readonly #elements = new Map<string, Element>();
   readonly #listeners = new Set<() => void>();
+  readonly #done: HistoryEntry[] = [];
+  readonly #undone: HistoryEntry[] = [];
   readonly #rootId: string;
   #version = 0;
 
@@ -38,6 +45,14 @@ export class Model {
     return this.#version;
   }
 
+  get canUndo(): boolean {
+    return this.#done.length > 0;
+  }
+
+  get canRedo(): boolean {
+    return this.#undone.length > 0;
+  }
+
   // An arrow function so React's useSyncExternalStore can receive it unbound.
   subscribe = (listener: () => void): (() => void) => {
     this.#listeners.add(listener);
@@ -47,7 +62,24 @@ export class Model {
   };
 
   execute(command: Command): void {
-    this.#apply(command);
+    const inverse = this.#apply(command);
+    this.#done.push({ command, inverse });
+    this.#undone.length = 0;
+    this.#changed();
+  }
+
+  undo(): void {
+    const entry = this.#done.pop();
+    if (!entry) return;
+    this.#apply(entry.inverse);
+    this.#undone.push(entry);
+    this.#changed();
+  }
+
+  redo(): void {
+    const entry = this.#undone.pop();
+    if (!entry) return;
+    this.#done.push({ command: entry.command, inverse: this.#apply(entry.command) });
     this.#changed();
   }
 
@@ -63,13 +95,61 @@ export class Model {
     return [...this.#elements.values()];
   }
 
-  #apply(command: Command): void {
-    this.#add(command.element);
+  // Returns the command that exactly reverses this one, computed before anything changes.
+  #apply(command: Command): Command {
+    switch (command.type) {
+      case 'AddElement':
+        return this.#add(command.element);
+      case 'RemoveElement':
+        return this.#remove(command.id);
+      case 'RestoreElements':
+        return this.#restore(command.elements);
+    }
   }
 
-  #add(element: Element): void {
+  #add(element: Element): Command {
     const complete = this.#validatedNew(element);
     this.#elements.set(complete.id, complete);
+    return { type: 'RemoveElement', id: complete.id };
+  }
+
+  #remove(id: string): Command {
+    const element = this.#require(id);
+    if (element.ownerId === null) throw new Error('The project root cannot be removed');
+    const subtree = this.#subtree(element);
+    for (const removed of subtree) this.#elements.delete(removed.id);
+    return { type: 'RestoreElements', elements: subtree };
+  }
+
+  #restore(elements: readonly Element[]): Command {
+    const [top] = elements;
+    if (!top) throw new Error('RestoreElements needs at least one element');
+    const restored = new Set<string>();
+    try {
+      for (const element of elements) {
+        if (element !== top && (element.ownerId === null || !restored.has(element.ownerId))) {
+          throw new Error(`Restored element ${element.id} is outside the restored subtree`);
+        }
+        const complete = this.#validatedNew(element);
+        this.#elements.set(complete.id, complete);
+        restored.add(complete.id);
+      }
+    } catch (error) {
+      for (const id of restored) this.#elements.delete(id);
+      throw error;
+    }
+    return { type: 'RemoveElement', id: top.id };
+  }
+
+  // Parents come before their children so the result can be restored in order.
+  #subtree(top: Element): Element[] {
+    const result: Element[] = [];
+    const pending = [top];
+    for (let next = pending.shift(); next; next = pending.shift()) {
+      result.push(next);
+      pending.push(...this.children(next.id));
+    }
+    return result;
   }
 
   #validatedNew(element: Element): Element {

@@ -8,9 +8,7 @@ export interface Element {
   readonly properties: Readonly<Record<string, PropertyValue>>;
 }
 
-export interface AddElement {
-  readonly type: 'AddElement';
-  readonly element: Element;
-}
-
-export type Command = AddElement;
+export type Command =
+  | { readonly type: 'AddElement'; readonly element: Element }
+  | { readonly type: 'RemoveElement'; readonly id: string }
+  | { readonly type: 'RestoreElements'; readonly elements: readonly Element[] };
