@@ -8,5 +8,9 @@
   },
   "scripts": {
     "typecheck": "tsc -p ."
+  },
+  "dependencies": {
+    "@dm/metamodel": "workspace:*",
+    "ulid": "^3.0.0"
   }
 }

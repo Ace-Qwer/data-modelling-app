@@ -59,6 +59,9 @@ importers:
       '@dm/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@dm/metamodel':
+        specifier: workspace:*
+        version: link:../../packages/metamodel
       '@tauri-apps/api':
         specifier: ^2.11.0
         version: 2.12.0
@@ -97,7 +100,14 @@ importers:
         specifier: ^8.3.0
         version: 8.3.1(@types/node@22.20.4)(jiti@2.6.1)
 
-  packages/core: {}
+  packages/core:
+    dependencies:
+      '@dm/metamodel':
+        specifier: workspace:*
+        version: link:../metamodel
+      ulid:
+        specifier: ^3.0.0
+        version: 3.0.2
 
   packages/metamodel: {}
 
