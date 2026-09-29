@@ -1,22 +1,22 @@
 import { useEffect } from 'react';
 import type { Action, ActionContext } from './actions';
-import { isMacPlatform, isTextEntryTarget, matchesShortcut } from './shortcuts';
+import type { ShortcutLog } from './menu/shortcut-log';
+import { handleShortcutKey } from './menu/shortcut-routing';
+import { isMacPlatform } from './shortcuts';
 
-export function useShortcuts(actions: readonly Action[], ctx: ActionContext): void {
+export function useShortcuts(
+  actions: readonly Action[],
+  ctx: ActionContext,
+  log: ShortcutLog,
+): void {
   useEffect(() => {
     const isMac = isMacPlatform();
     const onKeyDown = (event: KeyboardEvent) => {
-      if (isTextEntryTarget(event.target)) return;
-      const action = actions.find((a) =>
-        a.shortcuts?.some((s) => matchesShortcut(event, s, isMac)),
-      );
-      if (!action?.isEnabled(ctx)) return;
-      event.preventDefault();
-      action.run(ctx);
+      handleShortcutKey(event, actions, ctx, log, isMac);
     };
     window.addEventListener('keydown', onKeyDown);
     return () => {
       window.removeEventListener('keydown', onKeyDown);
     };
-  }, [actions, ctx]);
+  }, [actions, ctx, log]);
 }

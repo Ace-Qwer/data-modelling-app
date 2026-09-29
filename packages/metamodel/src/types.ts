@@ -23,6 +23,7 @@ export interface ElementKind {
   readonly category: KindCategory;
   readonly allowedOwners: readonly string[];
   readonly properties: readonly PropertyDefinition[];
+  readonly tools?: readonly string[];
 }
 
 export interface Notation {

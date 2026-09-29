@@ -48,6 +48,17 @@ describe('Registry', () => {
     expect(registry.kind('test:Missing')).toBeUndefined();
   });
 
+  it('accepts a diagram whose tools can live where the diagram lives', () => {
+    const board = kind({
+      id: 'test:Board',
+      category: 'diagram',
+      allowedOwners: ['core:Package'],
+      tools: ['core:Package'],
+    });
+
+    expect(Registry.create([notation(board)]).kind('test:Board')?.tools).toEqual(['core:Package']);
+  });
+
   it('lets a notation reference kinds of another notation registered with it', () => {
     const shapes: Notation = { id: 'shapes', label: 'Shapes', kinds: [kind({ id: 'shapes:Box' })] };
     const labels = notation(kind({ id: 'test:Label', allowedOwners: ['shapes:Box'] }));
@@ -104,6 +115,30 @@ describe('Registry', () => {
         ),
       ],
       /test:Thing\.size default "xl" is not one of its options/,
+    ],
+    [
+      'tools on a kind that is not a diagram',
+      [notation(kind({ id: 'test:Thing', tools: ['core:Package'] }))],
+      /test:Thing is not a diagram but declares tools/,
+    ],
+    [
+      'an unknown tool',
+      [notation(kind({ id: 'test:Board', category: 'diagram', tools: ['test:Ghost'] }))],
+      /test:Board offers unknown tool test:Ghost/,
+    ],
+    [
+      'a tool that cannot live where the diagram lives',
+      [
+        notation(
+          kind({
+            id: 'test:Board',
+            category: 'diagram',
+            allowedOwners: ['core:Package'],
+            tools: ['core:Model'],
+          }),
+        ),
+      ],
+      /test:Board offers tool core:Model that cannot live where the diagram lives/,
     ],
   ])('rejects %s', (_, notations, error) => {
     expect(() => Registry.create(notations)).toThrow(error);

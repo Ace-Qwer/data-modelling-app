@@ -1,17 +1,24 @@
 import type { Model } from '@dm/core';
 import { createStore, type StoreApi } from 'zustand/vanilla';
 
+export type PanelName = 'toolbox' | 'explorer' | 'properties';
+
 export interface UiState {
   readonly selectedId: string | null;
   readonly collapsedIds: ReadonlySet<string>;
   readonly openDiagramIds: readonly string[];
   readonly activeDiagramId: string | null;
+  readonly hiddenPanels: ReadonlySet<PanelName>;
+  readonly aboutOpen: boolean;
   select(id: string | null): void;
   toggleCollapsed(id: string): void;
   expand(id: string): void;
   openDiagram(id: string): void;
   closeDiagram(id: string): void;
   activateDiagram(id: string): void;
+  togglePanel(name: PanelName): void;
+  openAbout(): void;
+  closeAbout(): void;
 }
 
 export type UiStore = StoreApi<UiState>;
@@ -22,6 +29,8 @@ export function createUiStore(): UiStore {
     collapsedIds: new Set(),
     openDiagramIds: [],
     activeDiagramId: null,
+    hiddenPanels: new Set(),
+    aboutOpen: false,
     select: (id) => {
       set({ selectedId: id });
     },
@@ -57,6 +66,19 @@ export function createUiStore(): UiStore {
     },
     activateDiagram: (id) => {
       set({ activeDiagramId: id });
+    },
+    togglePanel: (name) => {
+      set((s) => {
+        const hiddenPanels = new Set(s.hiddenPanels);
+        if (!hiddenPanels.delete(name)) hiddenPanels.add(name);
+        return { hiddenPanels };
+      });
+    },
+    openAbout: () => {
+      set({ aboutOpen: true });
+    },
+    closeAbout: () => {
+      set({ aboutOpen: false });
     },
   }));
 }

@@ -1,37 +1,21 @@
-import { useEffect, useRef, useState } from 'react';
-import { useStore } from 'zustand';
-import type { Action, ActionContext } from './actions';
-import { formatShortcut, isMacPlatform } from './shortcuts';
-import { useModel } from './use-model';
+import { useCallback, useRef, useState } from 'react';
+import type { TopMenu } from './menu/menu-model';
+import { MenuList } from './menu/MenuList';
+import { useDismiss } from './menu/use-dismiss';
 
-export interface Menu {
-  readonly label: string;
-  readonly actions: readonly Action[];
+interface MenuBarProps {
+  readonly menus: readonly TopMenu[];
+  readonly isMac: boolean;
+  readonly onRun: (id: string) => void;
 }
 
-export function MenuBar({ menus, ctx }: { menus: readonly Menu[]; ctx: ActionContext }) {
-  useModel(ctx.model);
-  useStore(ctx.ui);
+export function MenuBar({ menus, isMac, onRun }: MenuBarProps) {
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const barRef = useRef<HTMLDivElement>(null);
-  const isMac = isMacPlatform();
-
-  useEffect(() => {
-    if (openMenu === null) return;
-    const onMouseDown = (event: MouseEvent) => {
-      if (event.target instanceof Node && barRef.current?.contains(event.target)) return;
-      setOpenMenu(null);
-    };
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOpenMenu(null);
-    };
-    document.addEventListener('mousedown', onMouseDown);
-    document.addEventListener('keydown', onKeyDown);
-    return () => {
-      document.removeEventListener('mousedown', onMouseDown);
-      document.removeEventListener('keydown', onKeyDown);
-    };
-  }, [openMenu]);
+  const close = useCallback(() => {
+    setOpenMenu(null);
+  }, []);
+  useDismiss(openMenu !== null, barRef, close);
 
   return (
     <div className="menu-bar" role="menubar" ref={barRef}>
@@ -49,31 +33,15 @@ export function MenuBar({ menus, ctx }: { menus: readonly Menu[]; ctx: ActionCon
             {menu.label}
           </button>
           {openMenu === menu.label && (
-            <div className="menu-popup" role="menu" aria-label={menu.label}>
-              {menu.actions.map((action) => {
-                const shortcut = action.shortcuts?.[0];
-                return (
-                  <button
-                    type="button"
-                    role="menuitem"
-                    key={action.id}
-                    disabled={!action.isEnabled(ctx)}
-                    aria-keyshortcuts={shortcut}
-                    onClick={() => {
-                      setOpenMenu(null);
-                      action.run(ctx);
-                    }}
-                  >
-                    <span>{action.label}</span>
-                    {shortcut !== undefined && (
-                      <span className="menu-shortcut" aria-hidden="true">
-                        {formatShortcut(shortcut, isMac)}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
+            <MenuList
+              label={menu.label}
+              nodes={menu.children}
+              isMac={isMac}
+              onRun={(id) => {
+                close();
+                onRun(id);
+              }}
+            />
           )}
         </div>
       ))}

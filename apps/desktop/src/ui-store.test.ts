@@ -54,6 +54,28 @@ describe('UI store', () => {
     expect(ui.getState().collapsedIds.has('n')).toBe(false);
   });
 
+  it('hides and shows panels independently', () => {
+    const { ui } = setup();
+
+    ui.getState().togglePanel('toolbox');
+    ui.getState().togglePanel('properties');
+    expect([...ui.getState().hiddenPanels].sort()).toEqual(['properties', 'toolbox']);
+
+    ui.getState().togglePanel('toolbox');
+    expect([...ui.getState().hiddenPanels]).toEqual(['properties']);
+  });
+
+  it('opens and closes the About dialog', () => {
+    const { ui } = setup();
+    expect(ui.getState().aboutOpen).toBe(false);
+
+    ui.getState().openAbout();
+    expect(ui.getState().aboutOpen).toBe(true);
+
+    ui.getState().closeAbout();
+    expect(ui.getState().aboutOpen).toBe(false);
+  });
+
   describe('when the model changes', () => {
     it('clears the selection if the selected element was removed', () => {
       const { model, modelId, ui } = setup();

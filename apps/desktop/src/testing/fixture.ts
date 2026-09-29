@@ -31,6 +31,15 @@ export function createActionContext(notations?: readonly Notation[]) {
   const ui = createUiStore();
   bindToModel(ui, fixture.model);
   const newProject = vi.fn<() => void>();
-  const ctx: ActionContext = { model: fixture.model, registry: fixture.registry, ui, newProject };
-  return { ...fixture, ui, ctx, newProject };
+  const exit = vi.fn<() => void>();
+  const textCommand = vi.fn<(command: 'undo' | 'redo') => void>();
+  const ctx: ActionContext = {
+    model: fixture.model,
+    registry: fixture.registry,
+    ui,
+    newProject,
+    exit,
+    textCommand,
+  };
+  return { ...fixture, ui, ctx, newProject, exit, textCommand };
 }

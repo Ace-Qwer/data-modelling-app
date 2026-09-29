@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { addActions, editActions, fileActions, type Action } from './actions';
-import { addElement, createActionContext } from './testing/fixture';
+import {
+  addDiagramActions,
+  addElementActions,
+  allActions,
+  editActions,
+  fileActions,
+  helpActions,
+  viewActions,
+  type Action,
+} from './actions';
+import { addElement as addFixtureElement, createActionContext } from './testing/fixture';
 
 function action(actions: readonly Action[], id: string): Action {
   const found = actions.find((a) => a.id === id);
@@ -9,39 +18,37 @@ function action(actions: readonly Action[], id: string): Action {
 }
 
 describe('Add actions', () => {
-  it('offer every registered kind except the project root', () => {
+  it('split element kinds from diagram kinds', () => {
     const { registry } = createActionContext();
 
-    expect(addActions(registry).map((a) => a.id)).toEqual([
+    expect(addElementActions(registry).map((a) => a.id)).toEqual([
       'add.core:Model',
       'add.core:Package',
-      'add.uml:ClassDiagram',
       'add.uml:Class',
     ]);
+    expect(addDiagramActions(registry).map((a) => a.id)).toEqual(['add.uml:ClassDiagram']);
   });
 
   it('are enabled only for kinds the selected element may own', () => {
     const { registry, ctx, ui, modelId } = createActionContext();
     ui.getState().select(modelId);
 
-    const enabled = addActions(registry)
-      .filter((a) => a.isEnabled(ctx))
-      .map((a) => a.label);
-
-    expect(enabled).toEqual(['Package', 'Class Diagram', 'Class']);
+    expect(
+      addElementActions(registry)
+        .filter((a) => a.isEnabled(ctx))
+        .map((a) => a.label),
+    ).toEqual(['Package', 'Class']);
+    expect(addDiagramActions(registry).every((a) => a.isEnabled(ctx))).toBe(true);
   });
 
   it('are all disabled when nothing is selected', () => {
     const { registry, ctx } = createActionContext();
 
-    expect(addActions(registry).some((a) => a.isEnabled(ctx))).toBe(false);
-  });
-
-  it('are all disabled when the selected element owns nothing', () => {
-    const { registry, ctx, ui, model, modelId } = createActionContext();
-    ui.getState().select(addElement(model, 'uml:Class', modelId, 'Order'));
-
-    expect(addActions(registry).some((a) => a.isEnabled(ctx))).toBe(false);
+    expect(
+      allActions(registry)
+        .filter((a) => a.id.startsWith('add.'))
+        .some((a) => a.isEnabled(ctx)),
+    ).toBe(false);
   });
 
   it('create a "New <Kind>" element under the selection, then select and reveal it', () => {
@@ -49,7 +56,7 @@ describe('Add actions', () => {
     ui.getState().select(modelId);
     ui.getState().toggleCollapsed(modelId);
 
-    action(addActions(registry), 'add.core:Package').run(ctx);
+    action(addElementActions(registry), 'add.core:Package').run(ctx);
 
     const [created] = model.children(modelId);
     expect(created).toMatchObject({ kind: 'core:Package', name: 'New Package' });
@@ -59,29 +66,42 @@ describe('Add actions', () => {
 });
 
 describe('Edit actions', () => {
-  it('enable undo and redo according to the model history', () => {
-    const { ctx, model, modelId } = createActionContext();
+  it('undo and redo the model when no text field has focus', () => {
+    const { ctx, model, modelId, textCommand } = createActionContext();
     const undo = action(editActions, 'edit.undo');
     const redo = action(editActions, 'edit.redo');
     expect(undo.isEnabled(ctx)).toBe(false);
 
-    addElement(model, 'core:Package', modelId, 'Ordering');
-    expect(undo.isEnabled(ctx)).toBe(true);
-
+    addFixtureElement(model, 'core:Package', modelId, 'Ordering');
     undo.run(ctx);
     expect(model.children(modelId)).toEqual([]);
-    expect(redo.isEnabled(ctx)).toBe(true);
 
     redo.run(ctx);
     expect(model.children(modelId)).toHaveLength(1);
+    expect(textCommand).not.toHaveBeenCalled();
   });
 
-  it('bind undo to Mod+Z and redo to both Mod+Shift+Z and Mod+Y', () => {
-    expect(action(editActions, 'edit.undo').shortcuts).toEqual(['Mod+Z']);
-    expect(action(editActions, 'edit.redo').shortcuts).toEqual(['Mod+Shift+Z', 'Mod+Y']);
+  it('undo and redo the focused text field instead of the model', () => {
+    const { ctx, model, modelId, textCommand } = createActionContext();
+    addFixtureElement(model, 'core:Package', modelId, 'Ordering');
+    const input = document.createElement('input');
+    document.body.append(input);
+    input.focus();
+
+    try {
+      expect(action(editActions, 'edit.undo').isEnabled(ctx)).toBe(true);
+      expect(action(editActions, 'edit.redo').isEnabled(ctx)).toBe(true);
+      action(editActions, 'edit.undo').run(ctx);
+      action(editActions, 'edit.redo').run(ctx);
+    } finally {
+      input.remove();
+    }
+
+    expect(textCommand.mock.calls).toEqual([['undo'], ['redo']]);
+    expect(model.children(modelId)).toHaveLength(1);
   });
 
-  it('never allow deleting the project root or the Model', () => {
+  it('never allow deleting the project root or the only Model', () => {
     const { ctx, ui, model, modelId } = createActionContext();
     const del = action(editActions, 'edit.delete');
 
@@ -93,32 +113,47 @@ describe('Edit actions', () => {
     expect(del.isEnabled(ctx)).toBe(false);
   });
 
-  it('delete the selected package', () => {
+  it('allow deleting a Model while another one remains', () => {
     const { ctx, ui, model, modelId } = createActionContext();
-    const pkg = addElement(model, 'core:Package', modelId, 'Ordering');
-    ui.getState().select(pkg);
+    const second = addFixtureElement(model, 'core:Model', model.root.id, 'Second');
     const del = action(editActions, 'edit.delete');
 
+    ui.getState().select(modelId);
     expect(del.isEnabled(ctx)).toBe(true);
     del.run(ctx);
 
-    expect(model.getElement(pkg)).toBeUndefined();
+    ui.getState().select(second);
+    expect(del.isEnabled(ctx)).toBe(false);
   });
 });
 
-describe('File actions', () => {
-  it('start a new project through the context', () => {
-    const { ctx, newProject } = createActionContext();
+describe('File, View and Help actions', () => {
+  it('start a new project and exit through the context', () => {
+    const { ctx, newProject, exit } = createActionContext();
 
     action(fileActions, 'file.new').run(ctx);
+    action(fileActions, 'file.exit').run(ctx);
 
     expect(newProject).toHaveBeenCalledOnce();
+    expect(exit).toHaveBeenCalledOnce();
   });
 
-  it('keep Open and Save disabled until persistence exists', () => {
-    const { ctx } = createActionContext();
+  it('toggle panels and report them as checked while visible', () => {
+    const { ctx, ui } = createActionContext();
+    const toolbox = action(viewActions, 'view.toolbox');
+    expect(toolbox.isChecked?.(ctx)).toBe(true);
 
-    expect(action(fileActions, 'file.open').isEnabled(ctx)).toBe(false);
-    expect(action(fileActions, 'file.save').isEnabled(ctx)).toBe(false);
+    toolbox.run(ctx);
+
+    expect(ui.getState().hiddenPanels.has('toolbox')).toBe(true);
+    expect(toolbox.isChecked?.(ctx)).toBe(false);
+  });
+
+  it('open the About dialog', () => {
+    const { ctx, ui } = createActionContext();
+
+    action(helpActions, 'help.about').run(ctx);
+
+    expect(ui.getState().aboutOpen).toBe(true);
   });
 });

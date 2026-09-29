@@ -237,3 +237,83 @@ body,
   background-image: radial-gradient(var(--grid) 1px, transparent 1px);
   background-size: 16px 16px;
 }
+
+.resize-handle-horizontal {
+  width: auto;
+  height: 4px;
+}
+
+.menu-separator {
+  height: 1px;
+  margin: 4px 6px;
+  background: var(--border);
+}
+
+.menu-submenu {
+  position: relative;
+}
+
+.menu-submenu > .menu-popup {
+  top: -5px;
+  left: 100%;
+}
+
+.menu-check {
+  display: inline-block;
+  width: 1em;
+}
+
+.context-menu {
+  position: fixed;
+  z-index: 20;
+}
+
+.context-menu > .menu-popup {
+  position: static;
+}
+
+.toolbox-heading {
+  margin: 0 10px 6px;
+  font-weight: 600;
+}
+
+.toolbox-tools {
+  display: flex;
+  flex-direction: column;
+  padding: 0 6px;
+}
+
+.toolbox-tool {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  border: none;
+  border-radius: 4px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+
+.toolbox-tool:hover {
+  background: var(--bg-hover);
+}
+
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  background: rgb(0 0 0 / 0.35);
+}
+
+.dialog {
+  min-width: 280px;
+  padding: 20px 24px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--fg);
+}
