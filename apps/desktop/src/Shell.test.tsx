@@ -174,4 +174,21 @@ describe('Shell', () => {
 
     expect(item('New Package')).toBeInTheDocument();
   });
+
+  it('acts on the right-clicked item even when another item is selected', async () => {
+    const user = renderShell();
+    await user.click(item('Model'));
+    await menu(user, 'Model', 'Add', 'Package');
+    await user.click(item('Model'));
+
+    await user.pointer({ keys: '[MouseRight]', target: item('New Package') });
+    await user.click(
+      within(screen.getByRole('menu', { name: 'Context menu' })).getByRole('menuitem', {
+        name: 'Delete',
+      }),
+    );
+
+    expect(screen.queryByRole('treeitem', { name: 'New Package' })).not.toBeInTheDocument();
+    expect(item('Model')).toBeInTheDocument();
+  });
 });
