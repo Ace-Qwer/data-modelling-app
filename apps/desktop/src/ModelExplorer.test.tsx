@@ -1,7 +1,7 @@
 import type { Notation } from '@dm/metamodel';
 import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { ModelExplorer } from './ModelExplorer';
 import { addElement, createActionContext } from './testing/fixture';
 
@@ -140,5 +140,30 @@ describe('ModelExplorer', () => {
     });
 
     expect(item('Live')).toBeInTheDocument();
+  });
+
+  it('selects the right-clicked item before asking for a context menu', async () => {
+    const fixture = createActionContext();
+    const other = addElement(fixture.model, 'core:Package', fixture.modelId, 'Other');
+    fixture.ui.getState().select(fixture.modelId);
+    const onContextMenu = vi.fn<(at: { x: number; y: number }) => void>(() => {
+      expect(fixture.ui.getState().selectedId).toBe(other);
+    });
+    render(
+      <ModelExplorer
+        model={fixture.model}
+        registry={fixture.registry}
+        ui={fixture.ui}
+        onContextMenu={onContextMenu}
+      />,
+    );
+
+    await userEvent.setup().pointer({
+      keys: '[MouseRight]',
+      target: item('Other'),
+      coords: { clientX: 12, clientY: 34 },
+    });
+
+    expect(onContextMenu).toHaveBeenCalledWith({ x: 12, y: 34 });
   });
 });

@@ -17,7 +17,9 @@ function sortForTree(elements: readonly Element[], registry: Registry): Element[
   return [...elements].sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name));
 }
 
-export function ModelExplorer(props: PanelProps) {
+type OpenContextMenu = (at: { x: number; y: number }) => void;
+
+export function ModelExplorer(props: PanelProps & { readonly onContextMenu?: OpenContextMenu }) {
   useModel(props.model);
   return (
     <div className="panel model-explorer">
@@ -35,7 +37,8 @@ function TreeNode({
   ui,
   element,
   level,
-}: PanelProps & { element: Element; level: number }) {
+  onContextMenu,
+}: PanelProps & { element: Element; level: number; readonly onContextMenu?: OpenContextMenu }) {
   const selected = useStore(ui, (s) => s.selectedId === element.id);
   const collapsed = useStore(ui, (s) => s.collapsedIds.has(element.id));
   const kind = registry.kind(element.kind);
@@ -53,6 +56,12 @@ function TreeNode({
       onClick={(event) => {
         event.stopPropagation();
         ui.getState().select(element.id);
+      }}
+      onContextMenu={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        ui.getState().select(element.id);
+        onContextMenu?.({ x: event.clientX, y: event.clientY });
       }}
       onDoubleClick={(event) => {
         event.stopPropagation();
@@ -92,6 +101,7 @@ function TreeNode({
               ui={ui}
               element={child}
               level={level + 1}
+              {...(onContextMenu ? { onContextMenu } : {})}
             />
           ))}
         </ul>
