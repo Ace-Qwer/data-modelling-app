@@ -16,6 +16,12 @@ export function TextField({
   onCommit,
 }: TextFieldProps) {
   const [draft, setDraft] = useState(value);
+  const [shownValue, setShownValue] = useState(value);
+  // An undo or edit elsewhere replaces the draft; remounting instead would drop keyboard focus.
+  if (value !== shownValue) {
+    setShownValue(value);
+    setDraft(value);
+  }
 
   const commit = () => {
     if (draft === value) return;

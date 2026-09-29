@@ -70,6 +70,17 @@ describe('Shell', () => {
     expect(screen.getByRole('menuitem', { name: 'Undo' })).toBeDisabled();
   });
 
+  it('keeps Delete in the Name field after committing a rename with Enter', async () => {
+    const user = renderShell();
+    await user.click(item('Model'));
+    await menu(user, 'Add', 'Package');
+
+    await user.type(screen.getByLabelText('Name'), 's{Enter}');
+    await user.keyboard('{Delete}');
+
+    expect(item('New Packages')).toBeInTheDocument();
+  });
+
   it('leaves Delete and Ctrl+Z to the text field while typing in Properties', async () => {
     const user = renderShell();
     await user.click(item('Model'));

@@ -36,9 +36,8 @@ export function PropertiesPanel({ model, registry, ui }: PanelProps) {
       <p className="property-kind">{kind.label}</p>
       <div className="property-list">
         <label htmlFor="prop-name">Name</label>
-        {/* Keyed by value so an undo or rename elsewhere replaces any stale draft. */}
         <TextField
-          key={`${element.id}:name:${element.name}`}
+          key={`${element.id}:name`}
           id="prop-name"
           value={element.name}
           required
@@ -54,7 +53,7 @@ export function PropertiesPanel({ model, registry, ui }: PanelProps) {
               {definition.label}
             </label>,
             <Editor
-              key={`${element.id}:${definition.key}:${String(value)}`}
+              key={`${element.id}:${definition.key}`}
               id={id}
               definition={definition}
               value={value}

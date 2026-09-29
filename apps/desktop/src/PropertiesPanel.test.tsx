@@ -53,6 +53,17 @@ describe('PropertiesPanel', () => {
     expect(fixture.model.getElement(id)?.name).toBe('Order');
   });
 
+  it('keeps keyboard focus in a field after committing it', async () => {
+    const fixture = renderPanel();
+    selectNewClass(fixture);
+
+    await fixture.user.type(screen.getByLabelText('Name'), 'Line{Enter}');
+    expect(screen.getByLabelText('Name')).toHaveFocus();
+
+    await fixture.user.click(screen.getByLabelText('Abstract'));
+    expect(screen.getByLabelText('Abstract')).toHaveFocus();
+  });
+
   it('commits a rename when the field loses focus', async () => {
     const fixture = renderPanel();
     const id = selectNewClass(fixture);
