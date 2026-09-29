@@ -15,6 +15,8 @@ export function useShortcuts(
         a.shortcuts?.some((s) => matchesShortcut(event, s, isMac)),
       );
       if (!action) return;
+      // A modal dialog owns the keyboard; nothing behind it may change.
+      if (ctx.ui.getState().aboutOpen) return;
       log.note(action.id);
       // The field's own editing (text undo, Delete) handles keys while the user is typing.
       if (isTextEntryTarget(event.target)) return;

@@ -158,4 +158,15 @@ describe('Shell', () => {
 
     expect(screen.getByRole('dialog', { name: 'Data Modelling App' })).toBeInTheDocument();
   });
+
+  it('keeps Delete away from the model while the About dialog is open', async () => {
+    const user = renderShell();
+    await user.click(item('Model'));
+    await menu(user, 'Model', 'Add', 'Package');
+
+    await menu(user, 'Help', 'About Data Modelling App');
+    await user.keyboard('{Delete}');
+
+    expect(item('New Package')).toBeInTheDocument();
+  });
 });
