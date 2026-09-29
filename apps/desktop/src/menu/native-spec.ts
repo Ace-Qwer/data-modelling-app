@@ -17,7 +17,8 @@ export type NativeEntry =
     }
   | { readonly type: 'submenu'; readonly text: string; readonly items: readonly NativeEntry[] }
   | { readonly type: 'separator' }
-  | { readonly type: 'quit' };
+  | { readonly type: 'quit' }
+  | { readonly type: 'predefined'; readonly item: 'Cut' | 'Copy' | 'Paste' | 'SelectAll' };
 
 // Only modifier combinations become native accelerators; a bare key such as Delete would be
 // captured by the OS menu and stop working inside text fields.
@@ -65,6 +66,23 @@ export function toNativeSpec(
     items: toNativeEntries(menu.children),
   }));
   if (!env.isMac) return entries;
+  // WKWebView routes Cmd+X/C/V/A in text fields through these menu items; without them the
+  // clipboard shortcuts stop working once our menu replaces the default one.
+  const withClipboard = entries.map((entry): NativeEntry =>
+    entry.type === 'submenu' && entry.text === 'Edit'
+      ? {
+          ...entry,
+          items: [
+            ...entry.items,
+            { type: 'separator' },
+            { type: 'predefined', item: 'Cut' },
+            { type: 'predefined', item: 'Copy' },
+            { type: 'predefined', item: 'Paste' },
+            { type: 'predefined', item: 'SelectAll' },
+          ],
+        }
+      : entry,
+  );
   const about = menus
     .flatMap((m) => m.children)
     .find((n) => n.kind === 'item' && n.id === 'help.about');
@@ -73,5 +91,5 @@ export function toNativeSpec(
     { type: 'separator' },
     { type: 'quit' },
   ];
-  return [{ type: 'submenu', text: 'Data Modelling App', items: appItems }, ...entries];
+  return [{ type: 'submenu', text: 'Data Modelling App', items: appItems }, ...withClipboard];
 }

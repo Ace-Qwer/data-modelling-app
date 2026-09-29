@@ -83,4 +83,18 @@ describe('toNativeSpec', () => {
       ],
     });
   });
+
+  it('gives the macOS Edit menu the clipboard items text fields rely on', () => {
+    const edit = toNativeSpec(menus, { isTauri: true, isMac: true }).find(
+      (entry) => entry.type === 'submenu' && entry.text === 'Edit',
+    );
+
+    expect(edit?.type === 'submenu' ? edit.items.slice(-5) : []).toEqual([
+      { type: 'separator' },
+      { type: 'predefined', item: 'Cut' },
+      { type: 'predefined', item: 'Copy' },
+      { type: 'predefined', item: 'Paste' },
+      { type: 'predefined', item: 'SelectAll' },
+    ]);
+  });
 });

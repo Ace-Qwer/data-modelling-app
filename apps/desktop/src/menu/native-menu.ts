@@ -20,6 +20,9 @@ async function build(
       case 'quit':
         items.push(await PredefinedMenuItem.new({ item: 'Quit' }));
         break;
+      case 'predefined':
+        items.push(await PredefinedMenuItem.new({ item: entry.item }));
+        break;
       case 'submenu':
         items.push(
           await Submenu.new({
