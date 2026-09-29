@@ -1,7 +1,7 @@
 import { Model } from '@dm/core';
 import { Registry } from '@dm/metamodel';
 import { umlNotation } from '@dm/notation-uml';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { Shell } from './Shell';
@@ -14,11 +14,16 @@ function renderShell() {
 
 const item = (name: string) => screen.getByRole('treeitem', { name });
 
-async function menu(user: ReturnType<typeof userEvent.setup>, title: string, entry: string) {
-  await user.click(screen.getByRole('menuitem', { name: title }));
-  await user.click(
-    within(screen.getByRole('menu', { name: title })).getByRole('menuitem', { name: entry }),
-  );
+async function menu(user: ReturnType<typeof userEvent.setup>, top: string, ...rest: string[]) {
+  await user.click(screen.getByRole('menuitem', { name: top }));
+  for (const entry of rest) {
+    // View entries are check items, so look for both item roles; the newest popup renders last.
+    const matches = [
+      ...screen.queryAllByRole('menuitem', { name: entry }),
+      ...screen.queryAllByRole('menuitemcheckbox', { name: entry }),
+    ];
+    await user.click(matches.at(-1) ?? document.body);
+  }
 }
 
 describe('Shell', () => {
@@ -26,7 +31,7 @@ describe('Shell', () => {
     const user = renderShell();
 
     await user.click(item('Model'));
-    await menu(user, 'Add', 'Package');
+    await menu(user, 'Model', 'Add', 'Package');
     expect(item('New Package')).toHaveAttribute('aria-selected', 'true');
 
     const name = screen.getByLabelText('Name');
@@ -42,8 +47,8 @@ describe('Shell', () => {
   it('closes an open diagram when its package is deleted and restores the tree on undo', async () => {
     const user = renderShell();
     await user.click(item('Model'));
-    await menu(user, 'Add', 'Package');
-    await menu(user, 'Add', 'Class Diagram');
+    await menu(user, 'Model', 'Add', 'Package');
+    await menu(user, 'Model', 'Add Diagram', 'Class Diagram');
     await user.dblClick(item('New Class Diagram'));
     expect(screen.getByRole('tab', { name: 'New Class Diagram' })).toBeInTheDocument();
 
@@ -60,7 +65,7 @@ describe('Shell', () => {
   it('starts over with File → New Project', async () => {
     const user = renderShell();
     await user.click(item('Model'));
-    await menu(user, 'Add', 'Class');
+    await menu(user, 'Model', 'Add', 'Class');
 
     await menu(user, 'File', 'New Project');
 
@@ -73,7 +78,7 @@ describe('Shell', () => {
   it('keeps Delete in the Name field after committing a rename with Enter', async () => {
     const user = renderShell();
     await user.click(item('Model'));
-    await menu(user, 'Add', 'Package');
+    await menu(user, 'Model', 'Add', 'Package');
 
     await user.type(screen.getByLabelText('Name'), 's{Enter}');
     await user.keyboard('{Delete}');
@@ -84,7 +89,7 @@ describe('Shell', () => {
   it('leaves Delete and Ctrl+Z to the text field while typing in Properties', async () => {
     const user = renderShell();
     await user.click(item('Model'));
-    await menu(user, 'Add', 'Package');
+    await menu(user, 'Model', 'Add', 'Package');
     const name = screen.getByLabelText('Name');
 
     await user.click(name);

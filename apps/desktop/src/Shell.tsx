@@ -2,15 +2,13 @@ import type { Model } from '@dm/core';
 import type { Registry } from '@dm/metamodel';
 import { useEffect, useMemo, useState } from 'react';
 import { Group, Panel, Separator } from 'react-resizable-panels';
-import {
-  addDiagramActions,
-  addElementActions,
-  editActions,
-  fileActions,
-  type ActionContext,
-} from './actions';
+import { allActions, type ActionContext } from './actions';
 import { CanvasArea } from './CanvasArea';
-import { MenuBar, type Menu } from './MenuBar';
+import { MenuBar } from './MenuBar';
+import { buildMenuBar, runMenuItem } from './menu/menu-model';
+import { isMacPlatform } from './shortcuts';
+import { useModel } from './use-model';
+import { useStore } from 'zustand';
 import { ModelExplorer } from './ModelExplorer';
 import { PanelErrorBoundary } from './PanelErrorBoundary';
 import { runTextCommand } from './platform';
@@ -39,6 +37,8 @@ export function Shell({ registry, createModel }: ShellProps) {
   const [shortcutLog] = useState(createShortcutLog);
   const { model, ui } = session;
   useEffect(() => bindToModel(ui, model), [ui, model]);
+  useModel(model);
+  useStore(ui);
 
   const ctx = useMemo<ActionContext>(
     () => ({
@@ -56,21 +56,20 @@ export function Shell({ registry, createModel }: ShellProps) {
     [model, registry, ui, createModel],
   );
 
-  const menus = useMemo<readonly Menu[]>(
-    () => [
-      { label: 'File', actions: fileActions },
-      { label: 'Edit', actions: editActions },
-      { label: 'Add', actions: [...addElementActions(registry), ...addDiagramActions(registry)] },
-    ],
-    [registry],
-  );
-  const allActions = useMemo(() => menus.flatMap((menu) => menu.actions), [menus]);
-  useShortcuts(allActions, ctx, shortcutLog);
+  const actions = useMemo(() => allActions(registry), [registry]);
+  useShortcuts(actions, ctx, shortcutLog);
+  const isMac = isMacPlatform();
 
   const panelProps = { model, registry, ui };
   return (
     <div className="shell">
-      <MenuBar menus={menus} ctx={ctx} />
+      <MenuBar
+        menus={buildMenuBar(ctx, { isTauri: false, isMac })}
+        isMac={isMac}
+        onRun={(id) => {
+          runMenuItem(id, ctx);
+        }}
+      />
       <Group className="shell-body" orientation="horizontal">
         <Panel defaultSize="20%" minSize="10%">
           <PanelErrorBoundary>
