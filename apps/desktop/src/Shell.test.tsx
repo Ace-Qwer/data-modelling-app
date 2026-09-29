@@ -8,7 +8,12 @@ import { Shell } from './Shell';
 
 function renderShell() {
   const registry = Registry.create([umlNotation]);
-  const platform = { isTauri: false, isMac: false, exit: () => undefined };
+  const platform = {
+    isTauri: false,
+    isMac: false,
+    exit: () => undefined,
+    textCommand: () => undefined,
+  };
   render(<Shell registry={registry} createModel={() => new Model(registry)} platform={platform} />);
   return userEvent.setup();
 }

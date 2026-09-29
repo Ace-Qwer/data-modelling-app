@@ -5,6 +5,7 @@ export interface Platform {
   readonly isTauri: boolean;
   readonly isMac: boolean;
   readonly exit: () => void;
+  readonly textCommand: (command: 'undo' | 'redo') => void;
 }
 
 export function detectPlatform(): Platform {
@@ -16,6 +17,7 @@ export function detectPlatform(): Platform {
       if (inTauri) void getCurrentWindow().close();
       else window.close();
     },
+    textCommand: runTextCommand,
   };
 }
 

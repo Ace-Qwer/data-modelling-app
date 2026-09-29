@@ -13,7 +13,8 @@ import { createShortcutLog } from './menu/shortcut-log';
 import { MenuBar } from './MenuBar';
 import { ModelExplorer } from './ModelExplorer';
 import { PanelErrorBoundary } from './PanelErrorBoundary';
-import { runTextCommand, type Platform } from './platform';
+import type { Platform } from './platform';
+import { handleNativeActivation } from './menu/shortcut-routing';
 import { PropertiesPanel } from './PropertiesPanel';
 import './shell.css';
 import { Toolbox } from './Toolbox';
@@ -55,7 +56,7 @@ export function Shell({ registry, createModel, platform }: ShellProps) {
         setSession({ model: createModel(), ui: createUiStore() });
       },
       exit: platform.exit,
-      textCommand: runTextCommand,
+      textCommand: platform.textCommand,
     }),
     [model, registry, ui, createModel, platform],
   );
@@ -67,7 +68,7 @@ export function Shell({ registry, createModel, platform }: ShellProps) {
   };
   const menus = buildMenuBar(ctx, platform);
   const nativeMenu = useNativeMenu(menus, platform, (id) => {
-    if (!shortcutLog.wasJustKeyed(id)) run(id);
+    handleNativeActivation(id, shortcutLog, run);
   });
 
   const openContextMenu = (at: { x: number; y: number }) => {

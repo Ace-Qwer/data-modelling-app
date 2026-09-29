@@ -19,6 +19,7 @@ export interface Action {
   readonly shortcuts?: readonly string[];
   readonly isEnabled: (ctx: ActionContext) => boolean;
   readonly isChecked?: (ctx: ActionContext) => boolean;
+  readonly handlesTextEntry?: boolean;
   readonly run: (ctx: ActionContext) => void;
 }
 
@@ -81,6 +82,7 @@ export const editActions: readonly Action[] = [
     id: 'edit.undo',
     label: 'Undo',
     shortcuts: ['Mod+Z'],
+    handlesTextEntry: true,
     isEnabled: (ctx) => ctx.model.canUndo || isTyping(),
     run: (ctx) => {
       if (isTyping()) ctx.textCommand('undo');
@@ -91,6 +93,7 @@ export const editActions: readonly Action[] = [
     id: 'edit.redo',
     label: 'Redo',
     shortcuts: ['Mod+Shift+Z', 'Mod+Y'],
+    handlesTextEntry: true,
     isEnabled: (ctx) => ctx.model.canRedo || isTyping(),
     run: (ctx) => {
       if (isTyping()) ctx.textCommand('redo');
