@@ -1,5 +1,5 @@
 {
-  "name": "@dm/core",
+  "name": "@dm/metamodel",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -8,9 +8,5 @@
   },
   "scripts": {
     "typecheck": "tsc -p ."
-  },
-  "dependencies": {
-    "@dm/metamodel": "workspace:*",
-    "ulid": "^3.0.0"
   }
 }

@@ -16,6 +16,24 @@ module.exports = {
       to: { path: '^apps/' },
     },
     {
+      name: 'notations-stay-declarative',
+      comment:
+        'Notations are data read by the registry; depending on core would couple them to model internals.',
+      severity: 'error',
+      from: { path: '^packages/notation-' },
+      to: { path: '^packages/core/' },
+    },
+    {
+      name: 'shell-is-notation-agnostic',
+      comment: 'Notations are registered once at startup so the shell works for any of them.',
+      severity: 'error',
+      from: {
+        path: '^apps/desktop/src/',
+        pathNot: ['^apps/desktop/src/main\\.tsx$', '^apps/desktop/src/testing/'],
+      },
+      to: { path: '^packages/notation-' },
+    },
+    {
       name: 'no-circular',
       severity: 'error',
       from: {},
