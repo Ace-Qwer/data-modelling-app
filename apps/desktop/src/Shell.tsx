@@ -19,6 +19,7 @@ import { PropertiesPanel } from './PropertiesPanel';
 import './shell.css';
 import { Toolbox } from './Toolbox';
 import { bindToModel, createUiStore, type UiStore } from './ui-store';
+import { useFocusVersion } from './use-focus-version';
 import { useModel } from './use-model';
 import { useShortcuts } from './use-shortcuts';
 
@@ -44,6 +45,7 @@ export function Shell({ registry, createModel, platform }: ShellProps) {
   const { model, ui } = session;
   useEffect(() => bindToModel(ui, model), [ui, model]);
   useModel(model);
+  useFocusVersion();
   const hidden = useStore(ui, (s) => s.hiddenPanels);
   useStore(ui);
 
