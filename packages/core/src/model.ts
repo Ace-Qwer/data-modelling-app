@@ -12,6 +12,7 @@ import { assertName, assertPropertyValue, defaultsOf } from './validation';
 interface HistoryEntry {
   readonly command: Command;
   readonly inverse: Command;
+  readonly revision: number;
 }
 
 export class Model {
@@ -22,6 +23,7 @@ export class Model {
   readonly #undone: HistoryEntry[] = [];
   readonly #rootId: string;
   #version = 0;
+  #nextRevision = 1;
 
   constructor(registry: Registry, createId: () => string = ulid) {
     this.#registry = registry;
@@ -59,6 +61,11 @@ export class Model {
     return this.#undone.length > 0;
   }
 
+  // Identifies the current point in history, so "unsaved changes" can compare against the saved point.
+  get revision(): number {
+    return this.#done.at(-1)?.revision ?? 0;
+  }
+
   // An arrow function so React's useSyncExternalStore can receive it unbound.
   subscribe = (listener: () => void): (() => void) => {
     this.#listeners.add(listener);
@@ -69,7 +76,7 @@ export class Model {
 
   execute(command: Command): void {
     const inverse = this.#apply(command);
-    this.#done.push({ command, inverse });
+    this.#done.push({ command, inverse, revision: this.#nextRevision++ });
     this.#undone.length = 0;
     this.#changed();
   }
@@ -85,7 +92,11 @@ export class Model {
   redo(): void {
     const entry = this.#undone.pop();
     if (!entry) return;
-    this.#done.push({ command: entry.command, inverse: this.#apply(entry.command) });
+    this.#done.push({
+      command: entry.command,
+      inverse: this.#apply(entry.command),
+      revision: entry.revision,
+    });
     this.#changed();
   }
 

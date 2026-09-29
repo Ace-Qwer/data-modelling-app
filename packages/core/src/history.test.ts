@@ -68,3 +68,44 @@ describe('history', () => {
     expect(listener).toHaveBeenCalledTimes(2);
   });
 });
+
+describe('revision', () => {
+  it('is 0 before any edit', () => {
+    expect(setup().model.revision).toBe(0);
+  });
+
+  it('returns to the saved revision after undoing a later edit', () => {
+    const { model, modelId } = setup();
+    model.execute({ type: 'AddElement', element: thing(modelId) });
+    const saved = model.revision;
+
+    model.execute({ type: 'SetName', id: thing(modelId).id, name: 'Purchase' });
+    expect(model.revision).not.toBe(saved);
+
+    model.undo();
+    expect(model.revision).toBe(saved);
+  });
+
+  it('never reuses an old revision for an edit made after an undo', () => {
+    const { model, modelId } = setup();
+    model.execute({ type: 'AddElement', element: thing(modelId) });
+    const first = model.revision;
+    model.undo();
+
+    model.execute({ type: 'AddElement', element: thing(modelId, { id: 'other' }) });
+
+    expect(model.revision).not.toBe(first);
+    expect(model.revision).not.toBe(0);
+  });
+
+  it('restores the revision of the edit that redo re-applies', () => {
+    const { model, modelId } = setup();
+    model.execute({ type: 'AddElement', element: thing(modelId) });
+    const edited = model.revision;
+    model.undo();
+
+    model.redo();
+
+    expect(model.revision).toBe(edited);
+  });
+});
