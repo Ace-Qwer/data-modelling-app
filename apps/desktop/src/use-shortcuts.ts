@@ -1,16 +1,24 @@
 import { useEffect } from 'react';
 import type { Action, ActionContext } from './actions';
+import type { ShortcutLog } from './menu/shortcut-log';
 import { isMacPlatform, isTextEntryTarget, matchesShortcut } from './shortcuts';
 
-export function useShortcuts(actions: readonly Action[], ctx: ActionContext): void {
+export function useShortcuts(
+  actions: readonly Action[],
+  ctx: ActionContext,
+  log: ShortcutLog,
+): void {
   useEffect(() => {
     const isMac = isMacPlatform();
     const onKeyDown = (event: KeyboardEvent) => {
-      if (isTextEntryTarget(event.target)) return;
       const action = actions.find((a) =>
         a.shortcuts?.some((s) => matchesShortcut(event, s, isMac)),
       );
-      if (!action?.isEnabled(ctx)) return;
+      if (!action) return;
+      log.note(action.id);
+      // The field's own editing (text undo, Delete) handles keys while the user is typing.
+      if (isTextEntryTarget(event.target)) return;
+      if (!action.isEnabled(ctx)) return;
       event.preventDefault();
       action.run(ctx);
     };
@@ -18,5 +26,5 @@ export function useShortcuts(actions: readonly Action[], ctx: ActionContext): vo
     return () => {
       window.removeEventListener('keydown', onKeyDown);
     };
-  }, [actions, ctx]);
+  }, [actions, ctx, log]);
 }

@@ -18,6 +18,7 @@ import { PropertiesPanel } from './PropertiesPanel';
 import './shell.css';
 import { bindToModel, createUiStore, type UiStore } from './ui-store';
 import { useShortcuts } from './use-shortcuts';
+import { createShortcutLog } from './menu/shortcut-log';
 
 interface ShellProps {
   readonly registry: Registry;
@@ -35,6 +36,7 @@ export function Shell({ registry, createModel }: ShellProps) {
     model: createModel(),
     ui: createUiStore(),
   }));
+  const [shortcutLog] = useState(createShortcutLog);
   const { model, ui } = session;
   useEffect(() => bindToModel(ui, model), [ui, model]);
 
@@ -63,7 +65,7 @@ export function Shell({ registry, createModel }: ShellProps) {
     [registry],
   );
   const allActions = useMemo(() => menus.flatMap((menu) => menu.actions), [menus]);
-  useShortcuts(allActions, ctx);
+  useShortcuts(allActions, ctx, shortcutLog);
 
   const panelProps = { model, registry, ui };
   return (
