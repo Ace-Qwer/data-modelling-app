@@ -1,6 +1,6 @@
 import react from '@vitejs/plugin-react';
 import { defineProject } from 'vitest/config';
-import { readAppVersion } from './app-version';
+import { readAppVersion } from './app-version.ts';
 
 export default defineProject({
   plugins: [react()],
