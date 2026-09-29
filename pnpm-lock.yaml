@@ -101,6 +101,12 @@ importers:
 
   packages/metamodel: {}
 
+  packages/notation-uml:
+    dependencies:
+      '@dm/metamodel':
+        specifier: workspace:*
+        version: link:../metamodel
+
 packages:
 
   '@adobe/css-tools@4.5.0':

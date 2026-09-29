@@ -10,7 +10,8 @@ Desktop modelling tool (UML, ER/database, BPMN, C4, …) built with TypeScript +
 
 ## Layout
 
-- `packages/metamodel`: notation-agnostic metamodel plus notation definitions
+- `packages/metamodel`: element kinds, property definitions and the validating `Registry` (plus the built-in core notation)
+- `packages/notation-*`: one package per notation (e.g. `notation-uml`); pure data, depends only on `metamodel`
 - `packages/core`: model repository, Commands, undo/redo, validation (pure TS)
 - `packages/diagram`: view model (shapes, bounds, waypoints), kept separate from semantics
 - `packages/io`: project file format, migrations, DDL, XMI
@@ -20,6 +21,7 @@ Desktop modelling tool (UML, ER/database, BPMN, C4, …) built with TypeScript +
 
 - Every model mutation is a serialisable `Command`. Ids are ULIDs. Never reference elements by array position; this keeps the model ready for CRDT collaboration.
 - `dependency-cruiser` enforces the package boundaries. Don't bypass it.
+- The shell never imports a notation. Notations are registered in `apps/desktop/src/main.tsx` only.
 
 ## Commands
 
