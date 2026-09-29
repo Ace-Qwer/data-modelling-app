@@ -26,18 +26,30 @@ export function toAccelerator(shortcut: string): string | undefined {
   return shortcut.includes('Mod+') ? shortcut.replace('Mod+', 'CmdOrCtrl+') : undefined;
 }
 
-export function toNativeEntries(nodes: readonly MenuNode[]): readonly NativeEntry[] {
+// Tauri keeps one handler per menu item id across all menus, so a popup reusing the menu
+// bar's ids would re-point the bar's items at the popup's handler.
+export const CONTEXT_ID_PREFIX = 'context:';
+
+export function fromContextId(id: string): string {
+  return id.startsWith(CONTEXT_ID_PREFIX) ? id.slice(CONTEXT_ID_PREFIX.length) : id;
+}
+
+export function toNativeEntries(nodes: readonly MenuNode[], idPrefix = ''): readonly NativeEntry[] {
   return nodes.map((node): NativeEntry => {
     switch (node.kind) {
       case 'separator':
         return { type: 'separator' };
       case 'submenu':
-        return { type: 'submenu', text: node.label, items: toNativeEntries(node.children) };
+        return {
+          type: 'submenu',
+          text: node.label,
+          items: toNativeEntries(node.children, idPrefix),
+        };
       case 'item': {
         if (node.checked !== undefined) {
           return {
             type: 'check',
-            id: node.id,
+            id: idPrefix + node.id,
             text: node.label,
             enabled: node.enabled,
             checked: node.checked,
@@ -46,7 +58,7 @@ export function toNativeEntries(nodes: readonly MenuNode[]): readonly NativeEntr
         const accelerator = node.shortcut === undefined ? undefined : toAccelerator(node.shortcut);
         return {
           type: 'item',
-          id: node.id,
+          id: idPrefix + node.id,
           text: node.label,
           enabled: node.enabled,
           ...(accelerator === undefined ? {} : { accelerator }),

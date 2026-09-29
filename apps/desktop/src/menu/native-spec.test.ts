@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import type { TopMenu } from './menu-model';
-import { toAccelerator, toNativeSpec } from './native-spec';
+import {
+  CONTEXT_ID_PREFIX,
+  fromContextId,
+  toAccelerator,
+  toNativeEntries,
+  toNativeSpec,
+  type NativeEntry,
+} from './native-spec';
 
 const menus: readonly TopMenu[] = [
   {
@@ -95,6 +102,27 @@ describe('toNativeSpec', () => {
       { type: 'predefined', item: 'Copy' },
       { type: 'predefined', item: 'Paste' },
       { type: 'predefined', item: 'SelectAll' },
+    ]);
+  });
+
+  it('gives context-menu items ids that never collide with the menu bar', () => {
+    const ids = (entries: readonly NativeEntry[]): string[] =>
+      entries.flatMap((e) => (e.type === 'submenu' ? ids(e.items) : 'id' in e ? [e.id] : []));
+    const context = toNativeEntries(
+      menus.flatMap((m) => m.children),
+      CONTEXT_ID_PREFIX,
+    );
+
+    const contextIds = ids(context);
+    const barIds = new Set(ids(toNativeSpec(menus, { isTauri: true, isMac: true })));
+
+    expect(contextIds.length).toBeGreaterThan(0);
+    expect(contextIds.filter((id) => barIds.has(id))).toEqual([]);
+    expect(contextIds.map(fromContextId)).toEqual([
+      'edit.undo',
+      'edit.delete',
+      'view.toolbox',
+      'help.about',
     ]);
   });
 });

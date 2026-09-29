@@ -1,7 +1,13 @@
 import { CheckMenuItem, Menu, MenuItem, PredefinedMenuItem, Submenu } from '@tauri-apps/api/menu';
 import { useEffect, useEffectEvent, useState } from 'react';
 import type { MenuEnvironment, MenuNode, TopMenu } from './menu-model';
-import { toNativeEntries, toNativeSpec, type NativeEntry } from './native-spec';
+import {
+  CONTEXT_ID_PREFIX,
+  fromContextId,
+  toNativeEntries,
+  toNativeSpec,
+  type NativeEntry,
+} from './native-spec';
 
 type NativeItem = MenuItem | CheckMenuItem | Submenu | PredefinedMenuItem;
 type Handles = Map<string, MenuItem | CheckMenuItem>;
@@ -125,10 +131,23 @@ export function useNativeMenu(
   return state;
 }
 
+let lastContextMenu: Menu | null = null;
+
 export async function showNativeContextMenu(
   nodes: readonly MenuNode[],
   onAction: (id: string) => void,
 ): Promise<void> {
-  const menu = await Menu.new({ items: await build(toNativeEntries(nodes), onAction, new Map()) });
+  // Closing the previous popup frees its native items. The current one can't be closed right
+  // after popup(): on Linux that call returns while the menu is still open.
+  await lastContextMenu?.close();
+  const items = await build(
+    toNativeEntries(nodes, CONTEXT_ID_PREFIX),
+    (id) => {
+      onAction(fromContextId(id));
+    },
+    new Map(),
+  );
+  const menu = await Menu.new({ items });
+  lastContextMenu = menu;
   await menu.popup();
 }
