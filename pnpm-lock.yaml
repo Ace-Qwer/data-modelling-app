@@ -124,6 +124,19 @@ importers:
         specifier: ^3.0.0
         version: 3.0.2
 
+  packages/io:
+    dependencies:
+      '@dm/core':
+        specifier: workspace:*
+        version: link:../core
+      '@dm/metamodel':
+        specifier: workspace:*
+        version: link:../metamodel
+    devDependencies:
+      '@dm/notation-uml':
+        specifier: workspace:*
+        version: link:../notation-uml
+
   packages/metamodel: {}
 
   packages/notation-uml:
