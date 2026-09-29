@@ -2,11 +2,18 @@ import type { Model } from '@dm/core';
 import type { Registry } from '@dm/metamodel';
 import { useEffect, useMemo, useState } from 'react';
 import { Group, Panel, Separator } from 'react-resizable-panels';
-import { addActions, editActions, fileActions, type ActionContext } from './actions';
+import {
+  addDiagramActions,
+  addElementActions,
+  editActions,
+  fileActions,
+  type ActionContext,
+} from './actions';
 import { CanvasArea } from './CanvasArea';
 import { MenuBar, type Menu } from './MenuBar';
 import { ModelExplorer } from './ModelExplorer';
 import { PanelErrorBoundary } from './PanelErrorBoundary';
+import { runTextCommand } from './platform';
 import { PropertiesPanel } from './PropertiesPanel';
 import './shell.css';
 import { bindToModel, createUiStore, type UiStore } from './ui-store';
@@ -39,6 +46,10 @@ export function Shell({ registry, createModel }: ShellProps) {
       newProject: () => {
         setSession({ model: createModel(), ui: createUiStore() });
       },
+      exit: () => {
+        window.close();
+      },
+      textCommand: runTextCommand,
     }),
     [model, registry, ui, createModel],
   );
@@ -47,7 +58,7 @@ export function Shell({ registry, createModel }: ShellProps) {
     () => [
       { label: 'File', actions: fileActions },
       { label: 'Edit', actions: editActions },
-      { label: 'Add', actions: addActions(registry) },
+      { label: 'Add', actions: [...addElementActions(registry), ...addDiagramActions(registry)] },
     ],
     [registry],
   );
