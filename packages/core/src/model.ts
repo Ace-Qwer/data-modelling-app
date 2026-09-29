@@ -1,4 +1,10 @@
-import { MODEL_KIND, PROJECT_KIND, type ElementKind, type Registry } from '@dm/metamodel';
+import {
+  MODEL_KIND,
+  PROJECT_KIND,
+  type ElementKind,
+  type PropertyValue,
+  type Registry,
+} from '@dm/metamodel';
 import { ulid } from 'ulid';
 import type { Command, Element } from './types';
 import { assertName, assertPropertyValue, defaultsOf } from './validation';
@@ -104,6 +110,10 @@ export class Model {
         return this.#remove(command.id);
       case 'RestoreElements':
         return this.#restore(command.elements);
+      case 'SetName':
+        return this.#setName(command.id, command.name);
+      case 'SetProperty':
+        return this.#setProperty(command.id, command.key, command.value);
     }
   }
 
@@ -139,6 +149,21 @@ export class Model {
       throw error;
     }
     return { type: 'RemoveElement', id: top.id };
+  }
+
+  #setName(id: string, name: string): Command {
+    const element = this.#require(id);
+    assertName(name);
+    this.#elements.set(id, { ...element, name });
+    return { type: 'SetName', id, name: element.name };
+  }
+
+  #setProperty(id: string, key: string, value: PropertyValue): Command {
+    const element = this.#require(id);
+    const definition = assertPropertyValue(this.#kindOf(element.kind), key, value);
+    const previous = element.properties[key] ?? definition.default;
+    this.#elements.set(id, { ...element, properties: { ...element.properties, [key]: value } });
+    return { type: 'SetProperty', id, key, value: previous };
   }
 
   // Parents come before their children so the result can be restored in order.

@@ -11,4 +11,11 @@ export interface Element {
 export type Command =
   | { readonly type: 'AddElement'; readonly element: Element }
   | { readonly type: 'RemoveElement'; readonly id: string }
-  | { readonly type: 'RestoreElements'; readonly elements: readonly Element[] };
+  | { readonly type: 'RestoreElements'; readonly elements: readonly Element[] }
+  | { readonly type: 'SetName'; readonly id: string; readonly name: string }
+  | {
+      readonly type: 'SetProperty';
+      readonly id: string;
+      readonly key: string;
+      readonly value: PropertyValue;
+    };
