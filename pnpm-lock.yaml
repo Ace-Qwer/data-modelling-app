@@ -59,6 +59,9 @@ importers:
       '@dm/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@dm/io':
+        specifier: workspace:*
+        version: link:../../packages/io
       '@dm/metamodel':
         specifier: workspace:*
         version: link:../../packages/metamodel

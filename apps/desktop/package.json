@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@dm/core": "workspace:*",
+    "@dm/io": "workspace:*",
     "@dm/metamodel": "workspace:*",
     "@dm/notation-uml": "workspace:*",
     "@tauri-apps/api": "^2.11.0",
