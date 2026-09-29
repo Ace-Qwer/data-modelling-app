@@ -29,4 +29,10 @@ describe('UML notation', () => {
 
     expect(registry.kindsAllowedUnder('uml:Class')).toEqual([]);
   });
+
+  it('offers classes and packages in the class diagram toolbox', () => {
+    const registry = Registry.create([umlNotation]);
+
+    expect(registry.kind('uml:ClassDiagram')?.tools).toEqual(['uml:Class', 'core:Package']);
+  });
 });

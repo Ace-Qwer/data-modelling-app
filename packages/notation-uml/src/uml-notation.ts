@@ -11,6 +11,7 @@ export const umlNotation: Notation = {
       category: 'diagram',
       allowedOwners: [MODEL_KIND, PACKAGE_KIND],
       properties: [],
+      tools: ['uml:Class', PACKAGE_KIND],
     },
     {
       id: 'uml:Class',

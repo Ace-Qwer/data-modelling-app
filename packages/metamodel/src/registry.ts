@@ -20,11 +20,12 @@ export class Registry {
         kinds.set(kind.id, kind);
       }
     }
-    // Owners are checked only once every notation is known, so notations may reference each other.
+    // Owners and tools are checked only once every notation is known, so notations may reference each other.
     for (const kind of kinds.values()) {
       for (const owner of kind.allowedOwners) {
         if (!kinds.has(owner)) throw new Error(`Kind ${kind.id} allows unknown owner ${owner}`);
       }
+      assertValidTools(kind, kinds);
     }
     return new Registry(kinds);
   }
@@ -52,6 +53,22 @@ function assertValidProperties(kind: ElementKind): void {
     if (property.type === 'enum' && !property.options.includes(property.default)) {
       throw new Error(
         `Kind ${kind.id}.${property.key} default "${property.default}" is not one of its options`,
+      );
+    }
+  }
+}
+
+// A tool's element is created in the diagram's owner, so it must be allowed to live there.
+function assertValidTools(kind: ElementKind, kinds: ReadonlyMap<string, ElementKind>): void {
+  if (!kind.tools) return;
+  if (kind.category !== 'diagram')
+    throw new Error(`Kind ${kind.id} is not a diagram but declares tools`);
+  for (const toolId of kind.tools) {
+    const tool = kinds.get(toolId);
+    if (!tool) throw new Error(`Diagram ${kind.id} offers unknown tool ${toolId}`);
+    if (!kind.allowedOwners.some((owner) => tool.allowedOwners.includes(owner))) {
+      throw new Error(
+        `Diagram ${kind.id} offers tool ${toolId} that cannot live where the diagram lives`,
       );
     }
   }
