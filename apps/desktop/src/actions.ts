@@ -35,7 +35,13 @@ function isTyping(): boolean {
 
 export function addElement(model: Model, ui: UiStore, kind: ElementKind, ownerId: string): string {
   const id = ulid();
-  ui.getState().expand(ownerId);
+  for (
+    let at = model.getElement(ownerId);
+    at;
+    at = at.ownerId === null ? undefined : model.getElement(at.ownerId)
+  ) {
+    ui.getState().expand(at.id);
+  }
   model.execute({
     type: 'AddElement',
     element: { id, kind: kind.id, name: `New ${kind.label}`, ownerId, properties: {} },

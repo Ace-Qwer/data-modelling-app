@@ -59,4 +59,16 @@ describe('Toolbox', () => {
 
     expect(ui.getState().collapsedIds.has(pkg)).toBe(false);
   });
+
+  it('reveals the new element when a higher ancestor is collapsed', async () => {
+    const { ui, diagram, model, user } = renderToolbox();
+    act(() => {
+      ui.getState().openDiagram(diagram);
+      ui.getState().toggleCollapsed(model.root.id);
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Class' }));
+
+    expect(ui.getState().collapsedIds.has(model.root.id)).toBe(false);
+  });
 });
