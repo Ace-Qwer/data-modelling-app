@@ -26,9 +26,7 @@ const menus: readonly TopMenu[] = [
   },
   {
     label: 'Help',
-    children: [
-      { kind: 'item', id: 'help.about', label: 'About Data Modelling App', enabled: true },
-    ],
+    children: [{ kind: 'item', id: 'help.about', label: 'About Schemata', enabled: true }],
   },
 ];
 
@@ -70,9 +68,7 @@ describe('toNativeSpec', () => {
       {
         type: 'submenu',
         text: 'Help',
-        items: [
-          { type: 'item', id: 'help.about', text: 'About Data Modelling App', enabled: true },
-        ],
+        items: [{ type: 'item', id: 'help.about', text: 'About Schemata', enabled: true }],
       },
     ]);
   });
@@ -83,14 +79,14 @@ describe('toNativeSpec', () => {
 
     expect(appMenu).toEqual({
       type: 'submenu',
-      text: 'Data Modelling App',
+      text: 'Schemata',
       items: [
-        { type: 'item', id: 'help.about', text: 'About Data Modelling App', enabled: true },
+        { type: 'item', id: 'help.about', text: 'About Schemata', enabled: true },
         { type: 'separator' },
         {
           type: 'item',
           id: 'file.exit',
-          text: 'Quit Data Modelling App',
+          text: 'Quit Schemata',
           enabled: true,
           accelerator: 'CmdOrCtrl+Q',
         },

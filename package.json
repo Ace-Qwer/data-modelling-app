@@ -1,6 +1,7 @@
 {
-  "name": "data-modelling-app",
+  "name": "schemata",
   "private": true,
+  "license": "GPL-3.0-only",
   "type": "module",
   "packageManager": "pnpm@11.26.0",
   "engines": {

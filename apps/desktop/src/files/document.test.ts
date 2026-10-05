@@ -18,7 +18,7 @@ describe('document', () => {
     const fresh = freshSession(() => createFixture().model);
 
     expect(isDirty(fresh)).toBe(false);
-    expect(documentTitle(fresh)).toBe('Untitled — Data Modelling App');
+    expect(documentTitle(fresh)).toBe('Untitled — Schemata');
   });
 
   it('names the document after the file, on any platform path style', () => {
@@ -32,9 +32,9 @@ describe('document', () => {
 
     addElement(s.model, 'core:Package', modelId, 'Billing');
     expect(isDirty(s)).toBe(true);
-    expect(documentTitle(s)).toBe('• Ordering.dmproj — Data Modelling App');
+    expect(documentTitle(s)).toBe('• Ordering.dmproj — Schemata');
 
     s.model.undo();
-    expect(documentTitle(s)).toBe('Ordering.dmproj — Data Modelling App');
+    expect(documentTitle(s)).toBe('Ordering.dmproj — Schemata');
   });
 });

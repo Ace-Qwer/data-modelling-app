@@ -111,10 +111,10 @@ export function toNativeSpec(
     {
       type: 'item',
       id: 'file.exit',
-      text: 'Quit Data Modelling App',
+      text: 'Quit Schemata',
       enabled: true,
       accelerator: 'CmdOrCtrl+Q',
     },
   ];
-  return [{ type: 'submenu', text: 'Data Modelling App', items: appItems }, ...withClipboard];
+  return [{ type: 'submenu', text: 'Schemata', items: appItems }, ...withClipboard];
 }

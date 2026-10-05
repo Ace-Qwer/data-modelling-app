@@ -25,18 +25,18 @@ describe('parseProject', () => {
   });
 
   it.each<[string, string, string]>([
-    ['text that is not JSON', 'hello', 'This file is not a Data Modelling project.'],
+    ['text that is not JSON', 'hello', 'This file is not a Schemata project.'],
     [
       'another JSON document',
       JSON.stringify({ name: 'package.json' }),
-      'This file is not a Data Modelling project.',
+      'This file is not a Schemata project.',
     ],
     ['a missing version', text({ version: undefined }), 'The project file is damaged.'],
     ['a fractional version', text({ version: 1.5 }), 'The project file is damaged.'],
     [
       'a newer version',
       text({ version: 99 }),
-      'This project was saved by a newer version of Data Modelling App.',
+      'This project was saved by a newer version of Schemata.',
     ],
     ['elements that are not a list', text({ elements: {} }), 'The project file is damaged.'],
     [

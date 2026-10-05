@@ -1,4 +1,4 @@
-# Data Modelling App
+# Schemata
 
 Desktop modelling tool (UML, ER/database, BPMN, C4, …) built with TypeScript + Tauri 2. See `docs/adr/` for decisions.
 

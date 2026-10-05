@@ -20,7 +20,7 @@ export function AboutDialog({ ui }: { ui: UiStore }) {
   return (
     <div className="dialog-backdrop">
       <div className="dialog" role="dialog" aria-modal="true" aria-labelledby="about-title">
-        <h2 id="about-title">Data Modelling App</h2>
+        <h2 id="about-title">Schemata</h2>
         <p>Version {__APP_VERSION__}</p>
         <button
           type="button"

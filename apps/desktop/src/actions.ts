@@ -197,7 +197,7 @@ export const viewActions: readonly Action[] = [
 export const helpActions: readonly Action[] = [
   {
     id: 'help.about',
-    label: 'About Data Modelling App',
+    label: 'About Schemata',
     isEnabled: always,
     run: (ctx) => {
       ctx.ui.getState().openAbout();
