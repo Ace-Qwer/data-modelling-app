@@ -212,7 +212,7 @@ describe('new, open and exit', () => {
     expect(result).toBe(session);
     expect(isDirty(result)).toBe(true);
     expect(memory.errors).toEqual([
-      { title: 'Could not open project', message: 'This file is not a Data Modelling project.' },
+      { title: 'Could not open project', message: 'This file is not a Schemata project.' },
     ]);
   });
 

@@ -10,7 +10,7 @@ export interface DocumentSession {
   readonly document: ProjectDocument;
 }
 
-const APP_NAME = 'Data Modelling App';
+const APP_NAME = 'Schemata';
 
 export function freshSession(createModel: () => Model): DocumentSession {
   const model = createModel();

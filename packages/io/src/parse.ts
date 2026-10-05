@@ -1,9 +1,9 @@
 import type { Element } from '@dm/core';
 import { CURRENT_VERSION, ProjectFileError, type ProjectFile } from './project-file';
 
-const NOT_A_PROJECT = 'This file is not a Data Modelling project.';
+const NOT_A_PROJECT = 'This file is not a Schemata project.';
 const DAMAGED = 'The project file is damaged.';
-const NEWER = 'This project was saved by a newer version of Data Modelling App.';
+const NEWER = 'This project was saved by a newer version of Schemata.';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);

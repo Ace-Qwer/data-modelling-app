@@ -2,7 +2,7 @@ import { message, open, save } from '@tauri-apps/plugin-dialog';
 import { exists, readTextFile, remove, rename, writeTextFile } from '@tauri-apps/plugin-fs';
 import type { DiscardAnswer, ProjectFiles } from './ports';
 
-const filters = [{ name: 'Data Modelling Project', extensions: ['dmproj'] }];
+const filters = [{ name: 'Schemata Project', extensions: ['dmproj'] }];
 
 // Custom button labels come back as the label on some platforms and as Yes/No on others.
 export function toDiscardAnswer(result: string): DiscardAnswer {
@@ -38,7 +38,7 @@ export function createTauriFiles(): ProjectFiles {
     confirmDiscard: async (name) =>
       toDiscardAnswer(
         await message(`Do you want to save the changes to ${name}?`, {
-          title: 'Data Modelling App',
+          title: 'Schemata',
           kind: 'warning',
           buttons: { yes: 'Save', no: "Don't Save", cancel: 'Cancel' },
         }),

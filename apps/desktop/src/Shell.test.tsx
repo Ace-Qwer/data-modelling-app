@@ -161,9 +161,9 @@ describe('Shell', () => {
   it('shows the About dialog from the Help menu', async () => {
     const { user } = renderShell();
 
-    await menu(user, 'Help', 'About Data Modelling App');
+    await menu(user, 'Help', 'About Schemata');
 
-    expect(screen.getByRole('dialog', { name: 'Data Modelling App' })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: 'Schemata' })).toBeInTheDocument();
   });
 
   it('keeps Delete away from the model while the About dialog is open', async () => {
@@ -171,7 +171,7 @@ describe('Shell', () => {
     await user.click(item('Model'));
     await menu(user, 'Model', 'Add', 'Package');
 
-    await menu(user, 'Help', 'About Data Modelling App');
+    await menu(user, 'Help', 'About Schemata');
     await user.keyboard('{Delete}');
 
     expect(item('New Package')).toBeInTheDocument();
@@ -200,20 +200,20 @@ describe('Shell', () => {
 
     await menu(user, 'File', 'Save');
     await waitFor(() => {
-      expect(titles.at(-1)).toBe('Ordering.dmproj — Data Modelling App');
+      expect(titles.at(-1)).toBe('Ordering.dmproj — Schemata');
     });
     expect(memory.disk.get('/p/Ordering.dmproj')).toContain('"format": "dmproj"');
 
     await user.click(item('Model'));
     await menu(user, 'Model', 'Add', 'Package');
     await waitFor(() => {
-      expect(titles.at(-1)).toBe('• Ordering.dmproj — Data Modelling App');
+      expect(titles.at(-1)).toBe('• Ordering.dmproj — Schemata');
     });
 
     await user.click(document.body);
     await user.keyboard('{Control>}z{/Control}');
     await waitFor(() => {
-      expect(titles.at(-1)).toBe('Ordering.dmproj — Data Modelling App');
+      expect(titles.at(-1)).toBe('Ordering.dmproj — Schemata');
     });
   });
 

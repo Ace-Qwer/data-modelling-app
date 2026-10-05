@@ -1,8 +1,8 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "Data Modelling App",
+  "productName": "Schemata",
   "version": "0.1.0",
-  "identifier": "app.datamodelling.desktop",
+  "identifier": "app.schemata.desktop",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:1420",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "Data Modelling App",
+        "title": "Schemata",
         "width": 800,
         "height": 600,
         "resizable": true,

@@ -24,7 +24,7 @@ describe('AboutDialog', () => {
       ui.getState().openAbout();
     });
 
-    expect(screen.getByRole('dialog', { name: 'Data Modelling App' })).toHaveTextContent(
+    expect(screen.getByRole('dialog', { name: 'Schemata' })).toHaveTextContent(
       /Version \d+\.\d+\.\d+/,
     );
   });
