@@ -4,7 +4,7 @@ import { Registry } from '@dm/metamodel';
 import { umlNotation } from '@dm/notation-uml';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { Shell } from './Shell';
 import { createTestPlatform } from './testing/platform';
 
@@ -284,5 +284,51 @@ describe('Shell', () => {
     await waitFor(() => {
       expect(memory.disk.get('/p/Typed.dmproj')).toContain('"name": "Ordering"');
     });
+  });
+
+  it('ignores a second Save while the first is still asking where to save', async () => {
+    const { user, memory } = renderShell();
+    const pick = vi
+      .spyOn(memory.files, 'pickSavePath')
+      .mockReturnValue(new Promise(() => undefined));
+
+    await menu(user, 'File', 'Save');
+    await menu(user, 'File', 'Save');
+
+    expect(pick).toHaveBeenCalledOnce();
+  });
+
+  it('shows an error when a file operation fails unexpectedly', async () => {
+    const { user, memory } = renderShell({ recent: ['/p/Gone.dmproj'] });
+    vi.spyOn(memory.files, 'exists').mockRejectedValue(new Error('forbidden path'));
+
+    await menu(user, 'File', 'Open Recent', 'Gone.dmproj (/p)');
+
+    await waitFor(() => {
+      expect(memory.errors).toEqual([
+        { title: 'Could not complete the action', message: 'forbidden path' },
+      ]);
+    });
+  });
+
+  it('asks about a name typed but not yet committed when the window is closed', async () => {
+    const { user, memory, exit, requestClose } = renderShell();
+    await user.click(item('Model'));
+    await menu(user, 'Model', 'Add', 'Package');
+    memory.answers.save.push('/p/Typed.dmproj');
+    await menu(user, 'File', 'Save');
+    await waitFor(() => {
+      expect(memory.disk.has('/p/Typed.dmproj')).toBe(true);
+    });
+    const name = screen.getByLabelText('Name');
+    await user.clear(name);
+    await user.type(name, 'Ordering');
+
+    requestClose();
+
+    await waitFor(() => {
+      expect(memory.prompts).toEqual(['Typed.dmproj']);
+    });
+    expect(exit).not.toHaveBeenCalled();
   });
 });

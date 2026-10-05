@@ -22,7 +22,6 @@ export type NativeEntry =
       readonly items: readonly NativeEntry[];
     }
   | { readonly type: 'separator' }
-  | { readonly type: 'quit' }
   | { readonly type: 'predefined'; readonly item: 'Cut' | 'Copy' | 'Paste' | 'SelectAll' };
 
 // Only modifier combinations become native accelerators; a bare key such as Delete would be
@@ -107,7 +106,15 @@ export function toNativeSpec(
   const appItems: NativeEntry[] = [
     ...(about ? toNativeEntries([about]) : []),
     { type: 'separator' },
-    { type: 'quit' },
+    // Not the predefined Quit: that terminates the app without a close request, so the
+    // unsaved-changes prompt would never appear.
+    {
+      type: 'item',
+      id: 'file.exit',
+      text: 'Quit Data Modelling App',
+      enabled: true,
+      accelerator: 'CmdOrCtrl+Q',
+    },
   ];
   return [{ type: 'submenu', text: 'Data Modelling App', items: appItems }, ...withClipboard];
 }

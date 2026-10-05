@@ -32,16 +32,19 @@ async function writeTo(
   path: string,
   deps: FlowDeps,
 ): Promise<DocumentSession> {
+  // Read with the text it describes: edits made while the write is in flight are not in the file.
+  const revision = session.model.revision;
   try {
     await deps.files.writeAtomically(path, serializeProject(session.model, deps.appVersion));
   } catch (error) {
     await deps.files.showError('Could not save project', messageOf(error));
     return session;
   }
-  await deps.recent.add(path);
+  // The project is on disk by now; a settings store failure must not make it look unsaved.
+  await deps.recent.add(path).catch(() => undefined);
   return {
     model: session.model,
-    document: { filePath: path, savedRevision: session.model.revision },
+    document: { filePath: path, savedRevision: revision },
   };
 }
 

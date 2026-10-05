@@ -67,7 +67,7 @@ function isDeletable(ctx: ActionContext, element: Element): boolean {
 }
 
 // Commits a name still being typed (fields commit on blur) so it is part of what gets saved.
-function commitPendingEdit(): void {
+export function commitPendingEdit(): void {
   if (document.activeElement instanceof HTMLElement && isTyping()) document.activeElement.blur();
 }
 

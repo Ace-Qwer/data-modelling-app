@@ -23,9 +23,6 @@ async function build(
       case 'separator':
         items.push(await PredefinedMenuItem.new({ item: 'Separator' }));
         break;
-      case 'quit':
-        items.push(await PredefinedMenuItem.new({ item: 'Quit' }));
-        break;
       case 'predefined':
         items.push(await PredefinedMenuItem.new({ item: entry.item }));
         break;

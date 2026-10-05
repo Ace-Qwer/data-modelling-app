@@ -102,6 +102,37 @@ describe('save and save as', () => {
   });
 });
 
+describe('saving while the model changes or the recent list fails', () => {
+  it('stays dirty for an edit made while the file was being written', async () => {
+    const { memory, deps, session, edit } = setup();
+    memory.answers.save.push('/p/Ordering.dmproj');
+    const write = memory.files.writeAtomically;
+    const files = {
+      ...memory.files,
+      writeAtomically: async (path: string, text: string) => {
+        edit('Typed during the save');
+        await write(path, text);
+      },
+    };
+
+    const saved = await save(session, { ...deps, files });
+
+    expect(isDirty(saved)).toBe(true);
+  });
+
+  it('is saved even when remembering it as recent fails', async () => {
+    const { memory, deps, session, edit } = setup();
+    edit();
+    memory.answers.save.push('/p/Ordering.dmproj');
+    const recent = { ...deps.recent, add: () => Promise.reject(new Error('Store is locked')) };
+
+    const saved = await save(session, { ...deps, recent });
+
+    expect(saved.document.filePath).toBe('/p/Ordering.dmproj');
+    expect(isDirty(saved)).toBe(false);
+  });
+});
+
 describe('guarding unsaved changes', () => {
   it('proceeds without asking when there is nothing to lose', async () => {
     const { memory, deps, session } = setup();

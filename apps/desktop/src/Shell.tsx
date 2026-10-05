@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Group, Panel, Separator } from 'react-resizable-panels';
 import { useStore } from 'zustand';
 import { AboutDialog } from './AboutDialog';
-import { allActions, type ActionContext } from './actions';
+import { allActions, commitPendingEdit, type ActionContext } from './actions';
 import { CanvasArea } from './CanvasArea';
 import { documentTitle, freshSession, type DocumentSession } from './files/document';
 import {
@@ -37,6 +37,22 @@ interface ShellProps {
   readonly registry: Registry;
   readonly createModel: () => Model;
   readonly platform: Platform;
+}
+
+// One flow at a time: a second one would start from the document the first is replacing, and
+// its result would overwrite the first's when adopted.
+function createFlowGate() {
+  let running = false;
+  return {
+    enter: () => {
+      if (running) return false;
+      running = true;
+      return true;
+    },
+    leave: () => {
+      running = false;
+    },
+  };
 }
 
 interface Session {
@@ -80,20 +96,32 @@ export function Shell({ registry, createModel, platform }: ShellProps) {
     void platform.recent?.list().then(setRecentProjects);
   }, [platform]);
 
+  const [flowGate] = useState(createFlowGate);
+
   // Flows are async; adopting their result compares models so a save keeps the UI state.
   const runFlow = useCallback(
     (flow: (current: DocumentSession, flowDeps: FlowDeps) => Promise<DocumentSession>) => {
-      if (!deps) return;
-      void flow(doc, deps).then(async (next) => {
-        setSession((current) =>
-          next.model === current.doc.model
-            ? { doc: next, ui: current.ui }
-            : { doc: next, ui: createUiStore() },
-        );
-        await refreshRecent();
-      });
+      if (!deps || !flowGate.enter()) return;
+      void (async () => {
+        try {
+          const next = await flow(doc, deps);
+          setSession((current) =>
+            next.model === current.doc.model
+              ? { doc: next, ui: current.ui }
+              : { doc: next, ui: createUiStore() },
+          );
+          await refreshRecent();
+        } catch (error) {
+          await deps.files.showError(
+            'Could not complete the action',
+            error instanceof Error ? error.message : String(error),
+          );
+        } finally {
+          flowGate.leave();
+        }
+      })();
     },
-    [doc, deps, refreshRecent],
+    [doc, deps, refreshRecent, flowGate],
   );
 
   const title = documentTitle(doc);
@@ -102,6 +130,7 @@ export function Shell({ registry, createModel, platform }: ShellProps) {
   }, [platform, title]);
 
   const requestExit = useCallback(() => {
+    commitPendingEdit();
     runFlow((current, flowDeps) => exitFlow(current, flowDeps, platform.exit));
   }, [runFlow, platform]);
   useEffect(() => platform.onCloseRequested(requestExit), [platform, requestExit]);
