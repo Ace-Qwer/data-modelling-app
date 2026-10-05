@@ -1,17 +1,20 @@
 import { Model } from '@dm/core';
+import { serializeProject } from '@dm/io';
 import { Registry } from '@dm/metamodel';
 import { umlNotation } from '@dm/notation-uml';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { Shell } from './Shell';
 import { createTestPlatform } from './testing/platform';
 
-function renderShell() {
+function renderShell(options: Parameters<typeof createTestPlatform>[0] = {}) {
   const registry = Registry.create([umlNotation]);
-  const { platform } = createTestPlatform();
-  render(<Shell registry={registry} createModel={() => new Model(registry)} platform={platform} />);
-  return userEvent.setup();
+  const test = createTestPlatform(options);
+  render(
+    <Shell registry={registry} createModel={() => new Model(registry)} platform={test.platform} />,
+  );
+  return { user: userEvent.setup(), ...test };
 }
 
 const item = (name: string) => screen.getByRole('treeitem', { name });
@@ -30,7 +33,7 @@ async function menu(user: ReturnType<typeof userEvent.setup>, top: string, ...re
 
 describe('Shell', () => {
   it('renames a new package in Properties and undoes the rename with Ctrl+Z', async () => {
-    const user = renderShell();
+    const { user } = renderShell();
 
     await user.click(item('Model'));
     await menu(user, 'Model', 'Add', 'Package');
@@ -47,7 +50,7 @@ describe('Shell', () => {
   });
 
   it('closes an open diagram when its package is deleted and restores the tree on undo', async () => {
-    const user = renderShell();
+    const { user } = renderShell();
     await user.click(item('Model'));
     await menu(user, 'Model', 'Add', 'Package');
     await menu(user, 'Model', 'Add Diagram', 'Class Diagram');
@@ -64,21 +67,24 @@ describe('Shell', () => {
     expect(item('New Class Diagram')).toBeInTheDocument();
   });
 
-  it('starts over with File → New Project', async () => {
-    const user = renderShell();
+  it('starts over with File → New Project after Don’t Save', async () => {
+    const { user, memory } = renderShell();
     await user.click(item('Model'));
     await menu(user, 'Model', 'Add', 'Class');
+    memory.answers.discard.push('discard');
 
     await menu(user, 'File', 'New Project');
 
-    expect(screen.queryByRole('treeitem', { name: 'New Class' })).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByRole('treeitem', { name: 'New Class' })).not.toBeInTheDocument();
+    });
     expect(item('Model')).toBeInTheDocument();
     await user.click(screen.getByRole('menuitem', { name: 'Edit' }));
     expect(screen.getByRole('menuitem', { name: 'Undo' })).toBeDisabled();
   });
 
   it('keeps Delete in the Name field after committing a rename with Enter', async () => {
-    const user = renderShell();
+    const { user } = renderShell();
     await user.click(item('Model'));
     await menu(user, 'Model', 'Add', 'Package');
 
@@ -89,7 +95,7 @@ describe('Shell', () => {
   });
 
   it('leaves Delete and Ctrl+Z to the text field while typing in Properties', async () => {
-    const user = renderShell();
+    const { user } = renderShell();
     await user.click(item('Model'));
     await menu(user, 'Model', 'Add', 'Package');
     const name = screen.getByLabelText('Name');
@@ -111,7 +117,7 @@ describe('Shell', () => {
   });
 
   it('adds a class from the Toolbox of the open diagram and undoes it', async () => {
-    const user = renderShell();
+    const { user } = renderShell();
     await user.click(item('Model'));
     await menu(user, 'Model', 'Add Diagram', 'Class Diagram');
     await user.dblClick(item('New Class Diagram'));
@@ -129,7 +135,7 @@ describe('Shell', () => {
   });
 
   it('adds a package from the right-click menu of a tree item', async () => {
-    const user = renderShell();
+    const { user } = renderShell();
 
     await user.pointer({ keys: '[MouseRight]', target: item('Model') });
     const contextMenu = screen.getByRole('menu', { name: 'Context menu' });
@@ -140,7 +146,7 @@ describe('Shell', () => {
   });
 
   it('hides and shows panels from the View menu, even both right-hand ones', async () => {
-    const user = renderShell();
+    const { user } = renderShell();
 
     await menu(user, 'View', 'Properties');
     await menu(user, 'View', 'Model Explorer');
@@ -153,7 +159,7 @@ describe('Shell', () => {
   });
 
   it('shows the About dialog from the Help menu', async () => {
-    const user = renderShell();
+    const { user } = renderShell();
 
     await menu(user, 'Help', 'About Data Modelling App');
 
@@ -161,7 +167,7 @@ describe('Shell', () => {
   });
 
   it('keeps Delete away from the model while the About dialog is open', async () => {
-    const user = renderShell();
+    const { user } = renderShell();
     await user.click(item('Model'));
     await menu(user, 'Model', 'Add', 'Package');
 
@@ -172,7 +178,7 @@ describe('Shell', () => {
   });
 
   it('acts on the right-clicked item even when another item is selected', async () => {
-    const user = renderShell();
+    const { user } = renderShell();
     await user.click(item('Model'));
     await menu(user, 'Model', 'Add', 'Package');
     await user.click(item('Model'));
@@ -186,5 +192,97 @@ describe('Shell', () => {
 
     expect(screen.queryByRole('treeitem', { name: 'New Package' })).not.toBeInTheDocument();
     expect(item('Model')).toBeInTheDocument();
+  });
+
+  it('saves a new project, titles the window after it and marks later edits', async () => {
+    const { user, memory, titles } = renderShell();
+    memory.answers.save.push('/p/Ordering');
+
+    await menu(user, 'File', 'Save');
+    await waitFor(() => {
+      expect(titles.at(-1)).toBe('Ordering.dmproj — Data Modelling App');
+    });
+    expect(memory.disk.get('/p/Ordering.dmproj')).toContain('"format": "dmproj"');
+
+    await user.click(item('Model'));
+    await menu(user, 'Model', 'Add', 'Package');
+    await waitFor(() => {
+      expect(titles.at(-1)).toBe('• Ordering.dmproj — Data Modelling App');
+    });
+
+    await user.click(document.body);
+    await user.keyboard('{Control>}z{/Control}');
+    await waitFor(() => {
+      expect(titles.at(-1)).toBe('Ordering.dmproj — Data Modelling App');
+    });
+  });
+
+  it('opens a project and lists it under Open Recent', async () => {
+    const other = new Model(Registry.create([umlNotation]));
+    const otherModel = other.children(other.root.id)[0]?.id ?? '';
+    other.execute({
+      type: 'AddElement',
+      element: {
+        id: 'inv',
+        kind: 'uml:Class',
+        name: 'Invoice',
+        ownerId: otherModel,
+        properties: {},
+      },
+    });
+    const { user, memory } = renderShell({
+      disk: { '/p/Shop.dmproj': serializeProject(other, '0.1.0') },
+    });
+    memory.answers.open.push('/p/Shop.dmproj');
+
+    await menu(user, 'File', 'Open…');
+
+    expect(await screen.findByRole('treeitem', { name: 'Invoice' })).toBeInTheDocument();
+    await menu(user, 'File', 'Open Recent');
+    expect(screen.getByRole('menuitem', { name: 'Shop.dmproj (/p)' })).toBeInTheDocument();
+  });
+
+  it('keeps unsaved work when New Project is cancelled at the prompt', async () => {
+    const { user, memory } = renderShell();
+    await user.click(item('Model'));
+    await menu(user, 'Model', 'Add', 'Package');
+    memory.answers.discard.push('cancel');
+
+    await menu(user, 'File', 'New Project');
+
+    await waitFor(() => {
+      expect(memory.prompts).toEqual(['Untitled']);
+    });
+    expect(item('New Package')).toBeInTheDocument();
+  });
+
+  it('asks before closing the window and closes after Don’t Save', async () => {
+    const { user, memory, exit, requestClose } = renderShell();
+    await user.click(item('Model'));
+    await menu(user, 'Model', 'Add', 'Package');
+    memory.answers.discard.push('discard');
+
+    requestClose();
+
+    await waitFor(() => {
+      expect(exit).toHaveBeenCalledOnce();
+    });
+    expect(memory.prompts).toEqual(['Untitled']);
+  });
+
+  it('saves a name typed but not yet committed when Ctrl+S is pressed in the field', async () => {
+    const { user, memory } = renderShell();
+    await user.click(item('Model'));
+    await menu(user, 'Model', 'Add', 'Package');
+    memory.answers.save.push('/p/Typed.dmproj');
+    const name = screen.getByLabelText('Name');
+    await user.clear(name);
+    await user.type(name, 'Ordering');
+
+    await user.keyboard('{Control>}s{/Control}');
+
+    await waitFor(() => {
+      expect(memory.disk.get('/p/Typed.dmproj')).toContain('"name": "Ordering"');
+    });
   });
 });
