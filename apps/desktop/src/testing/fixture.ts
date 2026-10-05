@@ -26,20 +26,30 @@ export function addElement(
   return id;
 }
 
-export function createActionContext(notations?: readonly Notation[]) {
+export function createActionContext(
+  notations?: readonly Notation[],
+  options: { readonly recent?: readonly string[]; readonly canUseFiles?: boolean } = {},
+) {
   const fixture = createFixture(notations);
   const ui = createUiStore();
   bindToModel(ui, fixture.model);
-  const newProject = vi.fn<() => void>();
-  const exit = vi.fn<() => void>();
-  const textCommand = vi.fn<(command: 'undo' | 'redo') => void>();
+  const spies = {
+    newProject: vi.fn<() => void>(),
+    exit: vi.fn<() => void>(),
+    textCommand: vi.fn<(command: 'undo' | 'redo') => void>(),
+    open: vi.fn<() => void>(),
+    save: vi.fn<() => void>(),
+    saveAs: vi.fn<() => void>(),
+    openRecent: vi.fn<(path: string) => void>(),
+    clearRecent: vi.fn<() => void>(),
+  };
   const ctx: ActionContext = {
     model: fixture.model,
     registry: fixture.registry,
     ui,
-    newProject,
-    exit,
-    textCommand,
+    canUseFiles: options.canUseFiles ?? true,
+    recentProjects: options.recent ?? [],
+    ...spies,
   };
-  return { ...fixture, ui, ctx, newProject, exit, textCommand };
+  return { ...fixture, ui, ctx, ...spies };
 }

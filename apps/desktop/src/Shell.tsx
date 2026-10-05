@@ -1,11 +1,21 @@
 import type { Model } from '@dm/core';
 import type { Registry } from '@dm/metamodel';
-import { useMemo, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Group, Panel, Separator } from 'react-resizable-panels';
 import { useStore } from 'zustand';
 import { AboutDialog } from './AboutDialog';
-import { allActions, type ActionContext } from './actions';
+import { allActions, commitPendingEdit, type ActionContext } from './actions';
 import { CanvasArea } from './CanvasArea';
+import { documentTitle, freshSession, type DocumentSession } from './files/document';
+import {
+  exit as exitFlow,
+  newProject as newProjectFlow,
+  open as openFlow,
+  openPath,
+  save as saveFlow,
+  saveAs as saveAsFlow,
+  type FlowDeps,
+} from './files/document-flow';
 import { ContextMenu } from './menu/ContextMenu';
 import { buildMenuBar, buildTreeContextMenu, runMenuItem } from './menu/menu-model';
 import { showNativeContextMenu, useNativeMenu } from './menu/native-menu';
@@ -29,23 +39,101 @@ interface ShellProps {
   readonly platform: Platform;
 }
 
+// One flow at a time: a second one would start from the document the first is replacing, and
+// its result would overwrite the first's when adopted.
+function createFlowGate() {
+  let running = false;
+  return {
+    enter: () => {
+      if (running) return false;
+      running = true;
+      return true;
+    },
+    leave: () => {
+      running = false;
+    },
+  };
+}
+
 interface Session {
-  readonly model: Model;
+  readonly doc: DocumentSession;
   readonly ui: UiStore;
 }
 
 export function Shell({ registry, createModel, platform }: ShellProps) {
-  // Selection and open tabs belong to one model, so a new project replaces both together.
+  // Selection and open tabs belong to one model, so a new or opened project replaces both together.
   const [session, setSession] = useState<Session>(() => ({
-    model: createModel(),
+    doc: freshSession(createModel),
     ui: createUiStore(),
   }));
+  const [recentProjects, setRecentProjects] = useState<readonly string[]>([]);
   const [shortcutLog] = useState(createShortcutLog);
   const [contextMenuAt, setContextMenuAt] = useState<{ x: number; y: number } | null>(null);
-  const { model, ui } = session;
+  const { doc, ui } = session;
+  const { model } = doc;
   useEffect(() => bindToModel(ui, model), [ui, model]);
   useModel(model);
   useFocusVersion();
+
+  const deps: FlowDeps | null = useMemo(
+    () =>
+      platform.files && platform.recent
+        ? {
+            files: platform.files,
+            recent: platform.recent,
+            registry,
+            createModel,
+            appVersion: __APP_VERSION__,
+          }
+        : null,
+    [platform, registry, createModel],
+  );
+
+  const refreshRecent = useCallback(async () => {
+    if (platform.recent) setRecentProjects(await platform.recent.list());
+  }, [platform]);
+  useEffect(() => {
+    void platform.recent?.list().then(setRecentProjects);
+  }, [platform]);
+
+  const [flowGate] = useState(createFlowGate);
+
+  // Flows are async; adopting their result compares models so a save keeps the UI state.
+  const runFlow = useCallback(
+    (flow: (current: DocumentSession, flowDeps: FlowDeps) => Promise<DocumentSession>) => {
+      if (!deps || !flowGate.enter()) return;
+      void (async () => {
+        try {
+          const next = await flow(doc, deps);
+          setSession((current) =>
+            next.model === current.doc.model
+              ? { doc: next, ui: current.ui }
+              : { doc: next, ui: createUiStore() },
+          );
+          await refreshRecent();
+        } catch (error) {
+          await deps.files.showError(
+            'Could not complete the action',
+            error instanceof Error ? error.message : String(error),
+          );
+        } finally {
+          flowGate.leave();
+        }
+      })();
+    },
+    [doc, deps, refreshRecent, flowGate],
+  );
+
+  const title = documentTitle(doc);
+  useEffect(() => {
+    platform.setTitle(title);
+  }, [platform, title]);
+
+  const requestExit = useCallback(() => {
+    commitPendingEdit();
+    runFlow((current, flowDeps) => exitFlow(current, flowDeps, platform.exit));
+  }, [runFlow, platform]);
+  useEffect(() => platform.onCloseRequested(requestExit), [platform, requestExit]);
   const hidden = useStore(ui, (s) => s.hiddenPanels);
   useStore(ui);
 
@@ -54,13 +142,45 @@ export function Shell({ registry, createModel, platform }: ShellProps) {
       model,
       registry,
       ui,
+      canUseFiles: deps !== null,
+      recentProjects,
       newProject: () => {
-        setSession({ model: createModel(), ui: createUiStore() });
+        if (deps) runFlow(newProjectFlow);
+        else setSession({ doc: freshSession(createModel), ui: createUiStore() });
       },
-      exit: platform.exit,
+      open: () => {
+        runFlow(openFlow);
+      },
+      save: () => {
+        runFlow(saveFlow);
+      },
+      saveAs: () => {
+        runFlow(saveAsFlow);
+      },
+      openRecent: (path: string) => {
+        runFlow((current, flowDeps) => openPath(current, path, flowDeps));
+      },
+      clearRecent: () => {
+        void platform.recent?.clear().then(refreshRecent);
+      },
+      exit: () => {
+        if (deps) requestExit();
+        else platform.exit();
+      },
       textCommand: platform.textCommand,
     }),
-    [model, registry, ui, createModel, platform],
+    [
+      model,
+      registry,
+      ui,
+      deps,
+      recentProjects,
+      createModel,
+      platform,
+      runFlow,
+      requestExit,
+      refreshRecent,
+    ],
   );
   const actions = useMemo(() => allActions(registry), [registry]);
   useShortcuts(actions, ctx, shortcutLog);

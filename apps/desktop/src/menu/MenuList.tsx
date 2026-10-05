@@ -26,6 +26,7 @@ export function MenuList({ label, nodes, isMac, onRun }: MenuListProps) {
                   type="button"
                   role="menuitem"
                   aria-haspopup="menu"
+                  disabled={node.enabled === false}
                   aria-expanded={openSubmenu === node.label}
                   onClick={() => {
                     setOpenSubmenu(openSubmenu === node.label ? null : node.label);

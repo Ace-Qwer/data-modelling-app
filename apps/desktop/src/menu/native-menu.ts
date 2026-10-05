@@ -10,7 +10,7 @@ import {
 } from './native-spec';
 
 type NativeItem = MenuItem | CheckMenuItem | Submenu | PredefinedMenuItem;
-type Handles = Map<string, MenuItem | CheckMenuItem>;
+type Handles = Map<string, MenuItem | CheckMenuItem | Submenu>;
 
 async function build(
   entries: readonly NativeEntry[],
@@ -23,20 +23,19 @@ async function build(
       case 'separator':
         items.push(await PredefinedMenuItem.new({ item: 'Separator' }));
         break;
-      case 'quit':
-        items.push(await PredefinedMenuItem.new({ item: 'Quit' }));
-        break;
       case 'predefined':
         items.push(await PredefinedMenuItem.new({ item: entry.item }));
         break;
-      case 'submenu':
-        items.push(
-          await Submenu.new({
-            text: entry.text,
-            items: await build(entry.items, onAction, handles),
-          }),
-        );
+      case 'submenu': {
+        const submenu = await Submenu.new({
+          text: entry.text,
+          ...(entry.enabled === undefined ? {} : { enabled: entry.enabled }),
+          items: await build(entry.items, onAction, handles),
+        });
+        handles.set(submenuKey(entry.text), submenu);
+        items.push(submenu);
         break;
+      }
       case 'check': {
         const check = await CheckMenuItem.new({
           id: entry.id,
@@ -66,12 +65,22 @@ async function build(
   return items;
 }
 
+// Submenus have no id of their own; their text is unique within the menus we build.
+function submenuKey(text: string): string {
+  return `submenu:${text}`;
+}
+
 function flatten(entries: readonly NativeEntry[]): NativeEntry[] {
-  return entries.flatMap((e) => (e.type === 'submenu' ? flatten(e.items) : [e]));
+  return entries.flatMap((e) => (e.type === 'submenu' ? [e, ...flatten(e.items)] : [e]));
 }
 
 async function sync(entries: readonly NativeEntry[], handles: Handles): Promise<void> {
   for (const entry of flatten(entries)) {
+    if (entry.type === 'submenu') {
+      if (entry.enabled !== undefined)
+        await handles.get(submenuKey(entry.text))?.setEnabled(entry.enabled);
+      continue;
+    }
     if (entry.type !== 'item' && entry.type !== 'check') continue;
     const handle = handles.get(entry.id);
     if (!handle) continue;
@@ -83,8 +92,20 @@ async function sync(entries: readonly NativeEntry[], handles: Handles): Promise<
 
 export type NativeMenuState = 'off' | 'pending' | 'active' | 'failed';
 
-// Builds the OS menu once, then only updates enabled and checked states: the menu's
-// structure depends on the registry and platform, which never change while the app runs.
+function structureOf(entries: readonly NativeEntry[]): unknown {
+  return entries.map((e) => {
+    switch (e.type) {
+      case 'submenu':
+        return { type: e.type, text: e.text, items: structureOf(e.items) };
+      case 'item':
+      case 'check':
+        return { type: e.type, id: e.id, text: e.text };
+      default:
+        return e;
+    }
+  });
+}
+
 export function useNativeMenu(
   menus: readonly TopMenu[],
   env: MenuEnvironment,
@@ -95,6 +116,7 @@ export function useNativeMenu(
   const handleAction = useEffectEvent(onAction);
   const spec = toNativeSpec(menus, env);
   const specKey = JSON.stringify(spec);
+  const structureKey = JSON.stringify(structureOf(spec));
 
   useEffect(() => {
     if (!env.isTauri) return;
@@ -125,9 +147,11 @@ export function useNativeMenu(
     return () => {
       effect.cancelled = true;
     };
-    // Built once per platform; later changes flow through the sync effect below.
+    // Rebuilt only when items are added or removed (Open Recent); state changes flow through the
+    // sync effect below. Old app menus stay open: closing their items would unregister handlers
+    // for ids the new menu reuses.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [env.isTauri]);
+  }, [env.isTauri, structureKey]);
 
   useEffect(() => {
     if (state !== 'active') return;

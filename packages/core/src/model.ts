@@ -7,11 +7,13 @@ import {
 } from '@dm/metamodel';
 import { ulid } from 'ulid';
 import type { Command, Element } from './types';
+import { ModelLoadError } from './load-error';
 import { assertName, assertPropertyValue, defaultsOf } from './validation';
 
 interface HistoryEntry {
   readonly command: Command;
   readonly inverse: Command;
+  readonly revision: number;
 }
 
 export class Model {
@@ -20,8 +22,9 @@ export class Model {
   readonly #listeners = new Set<() => void>();
   readonly #done: HistoryEntry[] = [];
   readonly #undone: HistoryEntry[] = [];
-  readonly #rootId: string;
+  #rootId: string;
   #version = 0;
+  #nextRevision = 1;
 
   constructor(registry: Registry, createId: () => string = ulid) {
     this.#registry = registry;
@@ -43,6 +46,50 @@ export class Model {
     });
   }
 
+  static load(registry: Registry, elements: readonly Element[]): Model {
+    const unknown = [
+      ...new Set(elements.map((e) => e.kind).filter((k) => !registry.kind(k))),
+    ].sort();
+    if (unknown.length > 0) {
+      throw new ModelLoadError(
+        `This project uses element kinds this app doesn't know: ${unknown.join(', ')}.`,
+      );
+    }
+    const roots = elements.filter((e) => e.ownerId === null);
+    const [root] = roots;
+    if (roots.length !== 1 || root?.kind !== PROJECT_KIND) {
+      throw new ModelLoadError(
+        'The project file is damaged: it must have exactly one project root.',
+      );
+    }
+    const model = new Model(registry);
+    model.#elements.clear();
+    model.#elements.set(root.id, root);
+    model.#rootId = root.id;
+    // Files are written parents first, but hand-edited ones may not be; add whatever is ready each round.
+    let pending = elements.filter((e) => e !== root);
+    while (pending.length > 0) {
+      const ready = pending.filter((e) => e.ownerId !== null && model.#elements.has(e.ownerId));
+      const [stuck] = pending;
+      if (ready.length === 0 && stuck) {
+        throw new ModelLoadError(
+          `The project file is damaged: element ${stuck.id} belongs to an element that doesn't exist.`,
+        );
+      }
+      for (const element of ready) {
+        try {
+          model.#add(element);
+        } catch (error) {
+          throw new ModelLoadError(
+            `The project file is damaged: ${error instanceof Error ? error.message : String(error)}`,
+          );
+        }
+      }
+      pending = pending.filter((e) => !ready.includes(e));
+    }
+    return model;
+  }
+
   get root(): Element {
     return this.#require(this.#rootId);
   }
@@ -59,6 +106,11 @@ export class Model {
     return this.#undone.length > 0;
   }
 
+  // Identifies the current point in history, so "unsaved changes" can compare against the saved point.
+  get revision(): number {
+    return this.#done.at(-1)?.revision ?? 0;
+  }
+
   // An arrow function so React's useSyncExternalStore can receive it unbound.
   subscribe = (listener: () => void): (() => void) => {
     this.#listeners.add(listener);
@@ -69,7 +121,7 @@ export class Model {
 
   execute(command: Command): void {
     const inverse = this.#apply(command);
-    this.#done.push({ command, inverse });
+    this.#done.push({ command, inverse, revision: this.#nextRevision++ });
     this.#undone.length = 0;
     this.#changed();
   }
@@ -85,7 +137,11 @@ export class Model {
   redo(): void {
     const entry = this.#undone.pop();
     if (!entry) return;
-    this.#done.push({ command: entry.command, inverse: this.#apply(entry.command) });
+    this.#done.push({
+      command: entry.command,
+      inverse: this.#apply(entry.command),
+      revision: entry.revision,
+    });
     this.#changed();
   }
 

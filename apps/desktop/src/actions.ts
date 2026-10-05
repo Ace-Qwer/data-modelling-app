@@ -1,6 +1,7 @@
 import type { Element, Model } from '@dm/core';
 import { MODEL_KIND, PROJECT_KIND, type ElementKind, type Registry } from '@dm/metamodel';
 import { ulid } from 'ulid';
+import { fileName } from './files/document';
 import { isTextEntryTarget } from './shortcuts';
 import type { PanelName, UiStore } from './ui-store';
 
@@ -11,6 +12,13 @@ export interface ActionContext {
   readonly newProject: () => void;
   readonly exit: () => void;
   readonly textCommand: (command: 'undo' | 'redo') => void;
+  readonly canUseFiles: boolean;
+  readonly recentProjects: readonly string[];
+  readonly open: () => void;
+  readonly save: () => void;
+  readonly saveAs: () => void;
+  readonly openRecent: (path: string) => void;
+  readonly clearRecent: () => void;
 }
 
 export interface Action {
@@ -58,24 +66,75 @@ function isDeletable(ctx: ActionContext, element: Element): boolean {
   return ctx.model.elements().filter((e) => e.kind === MODEL_KIND).length > 1;
 }
 
+// Commits a name still being typed (fields commit on blur) so it is part of what gets saved.
+export function commitPendingEdit(): void {
+  if (document.activeElement instanceof HTMLElement && isTyping()) document.activeElement.blur();
+}
+
+function fileAction(
+  id: string,
+  label: string,
+  shortcut: string | null,
+  isEnabled: (ctx: ActionContext) => boolean,
+  run: (ctx: ActionContext) => void,
+): Action {
+  return {
+    id,
+    label,
+    ...(shortcut === null ? {} : { shortcuts: [shortcut] }),
+    handlesTextEntry: true,
+    isEnabled,
+    run: (ctx) => {
+      commitPendingEdit();
+      run(ctx);
+    },
+  };
+}
+
+const withFiles = (ctx: ActionContext) => ctx.canUseFiles;
+
 export const fileActions: readonly Action[] = [
-  {
-    id: 'file.new',
-    label: 'New Project',
-    isEnabled: always,
-    run: (ctx) => {
-      ctx.newProject();
+  fileAction('file.new', 'New Project', 'Mod+N', always, (ctx) => {
+    ctx.newProject();
+  }),
+  fileAction('file.open', 'Open…', 'Mod+O', withFiles, (ctx) => {
+    ctx.open();
+  }),
+  fileAction('file.save', 'Save', 'Mod+S', withFiles, (ctx) => {
+    ctx.save();
+  }),
+  fileAction('file.saveAs', 'Save As…', 'Mod+Shift+S', withFiles, (ctx) => {
+    ctx.saveAs();
+  }),
+  fileAction(
+    'file.clearRecent',
+    'Clear Recently Opened',
+    null,
+    (ctx) => ctx.canUseFiles && ctx.recentProjects.length > 0,
+    (ctx) => {
+      ctx.clearRecent();
     },
-  },
-  {
-    id: 'file.exit',
-    label: 'Exit',
-    isEnabled: always,
-    run: (ctx) => {
-      ctx.exit();
-    },
-  },
+  ),
+  fileAction('file.exit', 'Exit', null, always, (ctx) => {
+    ctx.exit();
+  }),
 ];
+
+export function recentActions(paths: readonly string[]): readonly Action[] {
+  return paths.map((path, index) => {
+    const name = fileName(path);
+    const folder = path.slice(0, Math.max(0, path.length - name.length - 1));
+    return fileAction(
+      `file.openRecent:${String(index)}`,
+      `${name} (${folder})`,
+      null,
+      always,
+      (ctx) => {
+        ctx.openRecent(path);
+      },
+    );
+  });
+}
 
 export const editActions: readonly Action[] = [
   {

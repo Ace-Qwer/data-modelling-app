@@ -77,7 +77,8 @@ describe('toNativeSpec', () => {
     ]);
   });
 
-  it('prepends the macOS app menu with About and Quit', () => {
+  // The predefined Quit item terminates the app without a close request, skipping the prompt.
+  it('prepends the macOS app menu with About and a Quit that runs the exit flow', () => {
     const [appMenu] = toNativeSpec(menus, { isTauri: true, isMac: true });
 
     expect(appMenu).toEqual({
@@ -86,7 +87,13 @@ describe('toNativeSpec', () => {
       items: [
         { type: 'item', id: 'help.about', text: 'About Data Modelling App', enabled: true },
         { type: 'separator' },
-        { type: 'quit' },
+        {
+          type: 'item',
+          id: 'file.exit',
+          text: 'Quit Data Modelling App',
+          enabled: true,
+          accelerator: 'CmdOrCtrl+Q',
+        },
       ],
     });
   });
@@ -123,6 +130,25 @@ describe('toNativeSpec', () => {
       'edit.delete',
       'view.toolbox',
       'help.about',
+    ]);
+  });
+  it('carries a submenu enabled state to the native menu', () => {
+    const spec = toNativeSpec(
+      [
+        {
+          label: 'File',
+          children: [{ kind: 'submenu', label: 'Open Recent', enabled: false, children: [] }],
+        },
+      ],
+      { isTauri: true, isMac: false },
+    );
+
+    expect(spec).toEqual([
+      {
+        type: 'submenu',
+        text: 'File',
+        items: [{ type: 'submenu', text: 'Open Recent', enabled: false, items: [] }],
+      },
     ]);
   });
 });
