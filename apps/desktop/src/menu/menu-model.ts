@@ -5,6 +5,7 @@ import {
   editActions,
   fileActions,
   helpActions,
+  recentActions,
   viewActions,
   type Action,
   type ActionContext,
@@ -19,7 +20,12 @@ export type MenuNode =
       readonly enabled: boolean;
       readonly checked?: boolean;
     }
-  | { readonly kind: 'submenu'; readonly label: string; readonly children: readonly MenuNode[] }
+  | {
+      readonly kind: 'submenu';
+      readonly label: string;
+      readonly enabled?: boolean;
+      readonly children: readonly MenuNode[];
+    }
   | { readonly kind: 'separator' };
 
 export interface TopMenu {
@@ -75,6 +81,20 @@ export function buildMenuBar(ctx: ActionContext, env: MenuEnvironment): readonly
       label: 'File',
       children: [
         item(byId(fileActions, 'file.new'), ctx),
+        item(byId(fileActions, 'file.open'), ctx),
+        {
+          kind: 'submenu',
+          label: 'Open Recent',
+          enabled: ctx.canUseFiles && ctx.recentProjects.length > 0,
+          children: [
+            ...recentActions(ctx.recentProjects).map((a) => item(a, ctx)),
+            separator,
+            item(byId(fileActions, 'file.clearRecent'), ctx),
+          ],
+        },
+        separator,
+        item(byId(fileActions, 'file.save'), ctx),
+        item(byId(fileActions, 'file.saveAs'), ctx),
         ...(showExit ? [separator, item(byId(fileActions, 'file.exit'), ctx)] : []),
       ],
     },
@@ -98,6 +118,8 @@ export function buildTreeContextMenu(ctx: ActionContext): readonly MenuNode[] {
 }
 
 export function runMenuItem(id: string, ctx: ActionContext): void {
-  const action = allActions(ctx.registry).find((a) => a.id === id);
+  const action = [...allActions(ctx.registry), ...recentActions(ctx.recentProjects)].find(
+    (a) => a.id === id,
+  );
   if (action?.isEnabled(ctx)) action.run(ctx);
 }

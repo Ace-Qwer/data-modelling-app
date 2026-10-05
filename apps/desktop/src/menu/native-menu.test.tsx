@@ -70,4 +70,30 @@ describe('useNativeMenu', () => {
       expect(undoItemOf(shown).setEnabled).toHaveBeenLastCalledWith(true);
     });
   });
+  it('rebuilds the app menu when the menu structure changes, but not for state changes', async () => {
+    tauri.appMenus.length = 0;
+    const env = { isTauri: true, isMac: false };
+    const withItems = (labels: readonly string[], enabled: boolean): readonly TopMenu[] => [
+      {
+        label: 'File',
+        children: labels.map((label) => ({ kind: 'item', id: label, label, enabled })),
+      },
+    ];
+    const { result, rerender } = renderHook(
+      ({ menus }: { menus: readonly TopMenu[] }) => useNativeMenu(menus, env, () => undefined),
+      { initialProps: { menus: withItems(['a'], true) } },
+    );
+    await waitFor(() => {
+      expect(result.current).toBe('active');
+    });
+
+    rerender({ menus: withItems(['a'], false) });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(tauri.appMenus).toHaveLength(1);
+
+    rerender({ menus: withItems(['a', 'b'], false) });
+    await waitFor(() => {
+      expect(tauri.appMenus).toHaveLength(2);
+    });
+  });
 });

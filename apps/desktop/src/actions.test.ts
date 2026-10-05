@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   addDiagramActions,
   addElementActions,
@@ -6,6 +6,7 @@ import {
   editActions,
   fileActions,
   helpActions,
+  recentActions,
   viewActions,
   type Action,
 } from './actions';
@@ -155,5 +156,67 @@ describe('File, View and Help actions', () => {
     action(helpActions, 'help.about').run(ctx);
 
     expect(ui.getState().aboutOpen).toBe(true);
+  });
+});
+
+describe('File actions for projects', () => {
+  it.each<[string, 'open' | 'save' | 'saveAs' | 'clearRecent']>([
+    ['file.open', 'open'],
+    ['file.save', 'save'],
+    ['file.saveAs', 'saveAs'],
+    ['file.clearRecent', 'clearRecent'],
+  ])('%s runs through the context', (id, spy) => {
+    const fixture = createActionContext(undefined, { recent: ['/p/A.dmproj'] });
+
+    action(fileActions, id).run(fixture.ctx);
+
+    expect(fixture[spy]).toHaveBeenCalledOnce();
+  });
+
+  it('are disabled when files are unavailable, except New Project', () => {
+    const { ctx } = createActionContext(undefined, { canUseFiles: false, recent: ['/p/A.dmproj'] });
+
+    expect(fileActions.filter((a) => a.isEnabled(ctx)).map((a) => a.id)).toEqual([
+      'file.new',
+      'file.exit',
+    ]);
+  });
+
+  it('bind the standard file shortcuts', () => {
+    expect(fileActions.filter((a) => a.shortcuts).map((a) => [a.id, a.shortcuts?.[0]])).toEqual([
+      ['file.new', 'Mod+N'],
+      ['file.open', 'Mod+O'],
+      ['file.save', 'Mod+S'],
+      ['file.saveAs', 'Mod+Shift+S'],
+    ]);
+  });
+
+  it('commit a field being typed in before running', () => {
+    const { ctx, save } = createActionContext();
+    const input = document.createElement('input');
+    const committed = vi.fn<() => void>();
+    input.addEventListener('blur', committed);
+    document.body.append(input);
+    input.focus();
+
+    try {
+      action(fileActions, 'file.save').run(ctx);
+    } finally {
+      input.remove();
+    }
+
+    expect(committed).toHaveBeenCalledOnce();
+    expect(save).toHaveBeenCalledOnce();
+  });
+
+  it('offer each recent project labelled with its file and folder', () => {
+    const { ctx, openRecent } = createActionContext();
+    const [first] = recentActions(['/home/kat/Shop.dmproj', 'C:\\work\\Bill.dmproj']);
+
+    expect(
+      recentActions(['/home/kat/Shop.dmproj', 'C:\\work\\Bill.dmproj']).map((a) => a.label),
+    ).toEqual(['Shop.dmproj (/home/kat)', 'Bill.dmproj (C:\\work)']);
+    first?.run(ctx);
+    expect(openRecent).toHaveBeenCalledWith('/home/kat/Shop.dmproj');
   });
 });

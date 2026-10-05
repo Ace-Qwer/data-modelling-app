@@ -15,7 +15,12 @@ export type NativeEntry =
       readonly enabled: boolean;
       readonly checked: boolean;
     }
-  | { readonly type: 'submenu'; readonly text: string; readonly items: readonly NativeEntry[] }
+  | {
+      readonly type: 'submenu';
+      readonly text: string;
+      readonly enabled?: boolean;
+      readonly items: readonly NativeEntry[];
+    }
   | { readonly type: 'separator' }
   | { readonly type: 'quit' }
   | { readonly type: 'predefined'; readonly item: 'Cut' | 'Copy' | 'Paste' | 'SelectAll' };
@@ -43,6 +48,7 @@ export function toNativeEntries(nodes: readonly MenuNode[], idPrefix = ''): read
         return {
           type: 'submenu',
           text: node.label,
+          ...(node.enabled === undefined ? {} : { enabled: node.enabled }),
           items: toNativeEntries(node.children, idPrefix),
         };
       case 'item': {

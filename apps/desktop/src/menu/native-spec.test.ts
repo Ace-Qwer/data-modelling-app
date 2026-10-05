@@ -125,4 +125,23 @@ describe('toNativeSpec', () => {
       'help.about',
     ]);
   });
+  it('carries a submenu enabled state to the native menu', () => {
+    const spec = toNativeSpec(
+      [
+        {
+          label: 'File',
+          children: [{ kind: 'submenu', label: 'Open Recent', enabled: false, children: [] }],
+        },
+      ],
+      { isTauri: true, isMac: false },
+    );
+
+    expect(spec).toEqual([
+      {
+        type: 'submenu',
+        text: 'File',
+        items: [{ type: 'submenu', text: 'Open Recent', enabled: false, items: [] }],
+      },
+    ]);
+  });
 });

@@ -59,6 +59,13 @@ export function Shell({ registry, createModel, platform }: ShellProps) {
       },
       exit: platform.exit,
       textCommand: platform.textCommand,
+      canUseFiles: false,
+      recentProjects: [],
+      open: () => undefined,
+      save: () => undefined,
+      saveAs: () => undefined,
+      openRecent: () => undefined,
+      clearRecent: () => undefined,
     }),
     [model, registry, ui, createModel, platform],
   );

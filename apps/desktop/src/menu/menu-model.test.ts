@@ -32,14 +32,51 @@ describe('buildMenuBar', () => {
     ]);
   });
 
-  it('shows Exit in File only for Tauri on Windows and Linux', () => {
+  it('lays out File like StarUML, with Exit only for Tauri on Windows and Linux', () => {
     const { ctx } = createActionContext();
     const file = (env: { isTauri: boolean; isMac: boolean }) =>
       labels(buildMenuBar(ctx, env)[0]?.children ?? []);
 
-    expect(file(desktop)).toEqual(['New Project', '---', 'Exit']);
-    expect(file({ isTauri: true, isMac: true })).toEqual(['New Project']);
-    expect(file({ isTauri: false, isMac: false })).toEqual(['New Project']);
+    expect(file(desktop)).toEqual([
+      'New Project',
+      'Open…',
+      'Open Recent',
+      '---',
+      'Save',
+      'Save As…',
+      '---',
+      'Exit',
+    ]);
+    expect(file({ isTauri: true, isMac: true })).toEqual([
+      'New Project',
+      'Open…',
+      'Open Recent',
+      '---',
+      'Save',
+      'Save As…',
+    ]);
+  });
+
+  it('lists recent projects under Open Recent and disables it when empty', () => {
+    const withRecent = createActionContext(undefined, { recent: ['/p/Shop.dmproj'] });
+    const recentMenu = (ctx: typeof withRecent.ctx) =>
+      find(buildMenuBar(ctx, desktop)[0]?.children ?? [], 'Open Recent');
+
+    expect(labels(children(recentMenu(withRecent.ctx)))).toEqual([
+      'Shop.dmproj (/p)',
+      '---',
+      'Clear Recently Opened',
+    ]);
+    expect(recentMenu(withRecent.ctx)).toMatchObject({ enabled: true });
+    expect(recentMenu(createActionContext().ctx)).toMatchObject({ enabled: false });
+  });
+
+  it('runs recent project items by id', () => {
+    const { ctx, openRecent } = createActionContext(undefined, { recent: ['/p/Shop.dmproj'] });
+
+    runMenuItem('file.openRecent:0', ctx);
+
+    expect(openRecent).toHaveBeenCalledWith('/p/Shop.dmproj');
   });
 
   it('builds Model → Add and Add Diagram from the registry, enabled per selection', () => {
