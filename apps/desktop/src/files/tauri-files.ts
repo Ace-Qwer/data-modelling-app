@@ -1,5 +1,5 @@
 import { message, open, save } from '@tauri-apps/plugin-dialog';
-import { exists, readTextFile, rename, writeTextFile } from '@tauri-apps/plugin-fs';
+import { exists, readTextFile, remove, rename, writeTextFile } from '@tauri-apps/plugin-fs';
 import type { DiscardAnswer, ProjectFiles } from './ports';
 
 const filters = [{ name: 'Data Modelling Project', extensions: ['dmproj'] }];
@@ -23,8 +23,16 @@ export function createTauriFiles(): ProjectFiles {
     // Written beside the target first so an interrupted save never destroys the previous file.
     writeAtomically: async (path, text) => {
       const temporary = `${path}.tmp`;
-      await writeTextFile(temporary, text);
-      await rename(temporary, path);
+      // The name is predictable, so whatever already sits there (a leftover, or a symlink planted
+      // to redirect the write) is removed, and createNew refuses to open anything that reappears.
+      await remove(temporary).catch(() => undefined);
+      await writeTextFile(temporary, text, { createNew: true });
+      try {
+        await rename(temporary, path);
+      } catch (error) {
+        await remove(temporary).catch(() => undefined);
+        throw error;
+      }
     },
     exists: (path) => exists(path),
     confirmDiscard: async (name) =>
