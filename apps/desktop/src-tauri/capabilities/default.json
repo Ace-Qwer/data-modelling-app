@@ -3,5 +3,22 @@
   "identifier": "default",
   "description": "enables the default permissions",
   "windows": ["main"],
-  "permissions": ["core:default", "core:window:allow-close"]
+  "permissions": [
+    "core:default",
+    "core:window:allow-close",
+    "core:window:allow-destroy",
+    "core:window:allow-set-title",
+    "dialog:default",
+    "store:default",
+    { "identifier": "fs:allow-read-text-file", "allow": [{ "path": "**/*.dmproj" }] },
+    {
+      "identifier": "fs:allow-write-text-file",
+      "allow": [{ "path": "**/*.dmproj" }, { "path": "**/*.dmproj.tmp" }]
+    },
+    {
+      "identifier": "fs:allow-rename",
+      "allow": [{ "path": "**/*.dmproj" }, { "path": "**/*.dmproj.tmp" }]
+    },
+    { "identifier": "fs:allow-exists", "allow": [{ "path": "**/*.dmproj" }] }
+  ]
 }

@@ -5,15 +5,11 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { Shell } from './Shell';
+import { createTestPlatform } from './testing/platform';
 
 function renderShell() {
   const registry = Registry.create([umlNotation]);
-  const platform = {
-    isTauri: false,
-    isMac: false,
-    exit: () => undefined,
-    textCommand: () => undefined,
-  };
+  const { platform } = createTestPlatform();
   render(<Shell registry={registry} createModel={() => new Model(registry)} platform={platform} />);
   return userEvent.setup();
 }
